@@ -60,9 +60,6 @@
     <ClInclude Include="MainWindow.h">
       <Filter>00_App</Filter>
     </ClInclude>
-    <ClInclude Include="OverlayWindow.h">
-      <Filter>00_App</Filter>
-    </ClInclude>
     <ClInclude Include="ControllerCore.h">
       <Filter>01_Core\Controller</Filter>
     </ClInclude>
@@ -85,9 +82,6 @@
       <Filter>02_Services\Audio\Analysis</Filter>
     </ClInclude>
     <ClInclude Include="FrequencyMapper.h">
-      <Filter>02_Services\Audio\Analysis</Filter>
-    </ClInclude>
-    <ClInclude Include="SpectrumProcessor.h">
       <Filter>02_Services\Audio\Analysis</Filter>
     </ClInclude>
     <ClInclude Include="GraphicsContext.h">
@@ -129,15 +123,18 @@
     <ClInclude Include="WindowHelper.h">
       <Filter>_Common</Filter>
     </ClInclude>
+    <ClInclude Include="SpectrumPostProcessor.h">
+      <Filter>02_Services\Audio\Analysis</Filter>
+    </ClInclude>
+    <ClInclude Include="AudioCaptureEngine.h">
+      <Filter>02_Services\Audio\Capture</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp">
       <Filter>00_App</Filter>
     </ClCompile>
     <ClCompile Include="MainWindow.cpp">
-      <Filter>00_App</Filter>
-    </ClCompile>
-    <ClCompile Include="OverlayWindow.cpp">
       <Filter>00_App</Filter>
     </ClCompile>
     <ClCompile Include="Utils.cpp">
@@ -165,9 +162,6 @@
       <Filter>02_Services\Audio\Analysis</Filter>
     </ClCompile>
     <ClCompile Include="FrequencyMapper.cpp">
-      <Filter>02_Services\Audio\Analysis</Filter>
-    </ClCompile>
-    <ClCompile Include="SpectrumProcessor.cpp">
       <Filter>02_Services\Audio\Analysis</Filter>
     </ClCompile>
     <ClCompile Include="GraphicsContext.cpp">
@@ -205,6 +199,12 @@
     </ClCompile>
     <ClCompile Include="WindowHelper.cpp">
       <Filter>_Common</Filter>
+    </ClCompile>
+    <ClCompile Include="SpectrumPostProcessor.cpp">
+      <Filter>02_Services\Audio\Analysis</Filter>
+    </ClCompile>
+    <ClCompile Include="AudioCaptureEngine.cpp">
+      <Filter>02_Services\Audio\Capture</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

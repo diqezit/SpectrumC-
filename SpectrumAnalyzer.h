@@ -1,73 +1,68 @@
-// SpectrumAnalyzer.h
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// SpectrumAnalyzer.h: Analyzes audio stream and prepares data for visualization.
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 #ifndef SPECTRUM_CPP_SPECTRUM_ANALYZER_H
 #define SPECTRUM_CPP_SPECTRUM_ANALYZER_H
 
 #include "Common.h"
 #include "FFTProcessor.h"
 #include "FrequencyMapper.h"
-#include "SpectrumProcessor.h"
+#include "SpectrumPostProcessor.h"
+#include "AudioCapture.h"
 
 namespace Spectrum {
 
-    class SpectrumAnalyzer {
-    public:
-        SpectrumAnalyzer(size_t barCount = DEFAULT_BAR_COUNT,
-            size_t fftSize = DEFAULT_FFT_SIZE);
-        ~SpectrumAnalyzer() = default;
+    class SpectrumAnalyzer : public IAudioCaptureCallback {
+    private:
+        class AudioBufferManager {
+        public:
+            void Add(const float* data, size_t frames, int channels);
+            bool HasEnoughData(size_t required) const;
+            void CopyTo(AudioBuffer& dest, size_t size);
+            void Consume(size_t size);
 
-        // Main processing
-        void ProcessAudioData(const float* data, size_t samples, int channels);
+        private:
+            AudioBuffer m_buffer;
+            std::mutex m_mutex;
+        };
+
+    public:
+        SpectrumAnalyzer(
+            size_t barCount = DEFAULT_BAR_COUNT,
+            size_t fftSize = DEFAULT_FFT_SIZE
+        );
+
+        void OnAudioData(const float* data, size_t samples, int channels) override;
+        void Update();
         void GenerateTestData(float timeOffset);
 
-        // Configuration
         void SetBarCount(size_t newBarCount);
         void SetAmplification(float newAmplification);
         void SetSmoothing(float newSmoothing);
         void SetFFTWindow(FFTWindowType windowType);
         void SetScaleType(SpectrumScale scaleType);
 
-        // Getters
-        const SpectrumData& GetSpectrum() const noexcept { return m_spectrumBars; }
-        const SpectrumData& GetPeakValues() const noexcept { return m_spectrumProcessor.GetPeakValues(); }
-        size_t GetBarCount() const noexcept { return m_barCount; }
-        float GetAmplification() const noexcept { return m_spectrumProcessor.GetAmplification(); }
-        float GetSmoothing() const noexcept { return m_spectrumProcessor.GetSmoothing(); }
-        SpectrumScale GetScaleType() const noexcept { return m_scaleType; }
+        SpectrumData GetSpectrum();
+        const SpectrumData& GetPeakValues() const;
+        size_t GetBarCount() const;
+        float GetAmplification() const;
+        float GetSmoothing() const;
+        SpectrumScale GetScaleType() const;
 
     private:
-        // Audio processing pipeline
-        void PrepareMonoAudio(const float* data, size_t frames, int channels);
-        void ProcessFFTChunks();
         void ProcessSingleFFTChunk();
-        void MapAndProcessSpectrum();
+        SpectrumData GenerateTestSpectrum(float timeOffset);
 
-        // Buffer management
-        void EnsureBufferSizes();
-        void ConsumeProcessedAudio(size_t hopSize);
-
-    private:
-        // Configuration
-        size_t        m_barCount;
+        size_t m_barCount;
         SpectrumScale m_scaleType;
-        size_t        m_sampleRate;
+        size_t m_sampleRate;
 
-        // Processing components
-        FFTProcessor      m_fftProcessor;
-        FrequencyMapper   m_frequencyMapper;
-        SpectrumProcessor m_spectrumProcessor;
+        FFTProcessor m_fftProcessor;
+        FrequencyMapper m_frequencyMapper;
+        SpectrumPostProcessor m_postProcessor;
+        AudioBufferManager m_bufferManager;
 
-        // Audio buffers
-        AudioBuffer  m_monoBuffer;
-        AudioBuffer  m_processBuffer;
-
-        // Output data
-        SpectrumData m_spectrumBars;
+        AudioBuffer m_processBuffer;
+        std::mutex m_mutex;
     };
 
-} // namespace Spectrum
+}
 
-#endif // SPECTRUM_CPP_SPECTRUM_ANALYZER_H
+#endif

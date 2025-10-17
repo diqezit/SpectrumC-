@@ -1,27 +1,31 @@
 // InputManager.h
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// InputManager.h: Handles and dispatches user input events.
+// InputManager.h: Manages keyboard input and generates actions.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 #ifndef SPECTRUM_CPP_INPUT_MANAGER_H
 #define SPECTRUM_CPP_INPUT_MANAGER_H
 
 #include "Common.h"
+#include <map>
+#include <vector>
 
 namespace Spectrum {
 
-    class ControllerCore;
-
     class InputManager {
     public:
-        explicit InputManager(ControllerCore& controller);
+        InputManager();
 
-        void OnKeyPress(int key);
-        void OnMouseMove(int x, int y);
-        void OnMouseClick(int x, int y);
+        void Update();
+
+        std::vector<InputAction> GetActions();
 
     private:
-        ControllerCore& m_controller;
+        void PollKeys();
+        void QueueAction(int key);
+
+        std::map<int, bool> m_keyStates;
+        std::vector<InputAction> m_actionQueue;
     };
 
 } // namespace Spectrum

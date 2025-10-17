@@ -1,105 +1,94 @@
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-// InputManager.cpp: Implementation of the InputManager class.
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+// InputManager.cpp
+// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+// InputManager.cpp: Implementation of the InputManager.
+// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 #include "InputManager.h"
-#include "ControllerCore.h"
-#include "WindowManager.h"
-#include "Utils.h"
 
 namespace Spectrum {
 
-    InputManager::InputManager(ControllerCore& controller)
-        : m_controller(controller) {
+    InputManager::InputManager() {}
+
+    void InputManager::Update() {
+        PollKeys();
     }
 
-    void InputManager::OnKeyPress(int key) {
+    std::vector<InputAction> InputManager::GetActions() {
+        if (m_actionQueue.empty()) {
+            return {};
+        }
+        std::vector<InputAction> actions = std::move(m_actionQueue);
+        m_actionQueue.clear();
+        return actions;
+    }
+
+    void InputManager::PollKeys() {
+        const std::vector<int> keysToPoll = {
+            VK_SPACE, 'A', 'R', 'Q', 'O', 'S',
+            VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT,
+            VK_SUBTRACT, VK_OEM_MINUS,
+            VK_ADD, VK_OEM_PLUS,
+            VK_ESCAPE
+        };
+
+        for (int key : keysToPoll) {
+            bool isPressed = (GetAsyncKeyState(key) & 0x8000) != 0;
+
+            if (isPressed && !m_keyStates[key]) {
+                m_keyStates[key] = true;
+                QueueAction(key);
+            }
+            else if (!isPressed) {
+                m_keyStates[key] = false;
+            }
+        }
+    }
+
+    void InputManager::QueueAction(int key) {
         switch (key) {
         case VK_SPACE:
-            m_controller.m_audioManager->ToggleCapture();
+            m_actionQueue.push_back(InputAction::ToggleCapture);
             break;
-
         case 'A':
-            m_controller.m_audioManager->ToggleAnimation();
+            m_actionQueue.push_back(InputAction::ToggleAnimation);
             break;
-
-        case 'R':
-            if (m_controller.m_rendererManager) {
-                auto* graphics = m_controller.m_windowManager->GetGraphics();
-                m_controller.m_rendererManager->SwitchRenderer(1, graphics);
-            }
-            break;
-
-        case 'Q':
-            if (m_controller.m_rendererManager) {
-                m_controller.m_rendererManager->CycleQuality();
-            }
-            break;
-
-        case 'O':
-            m_controller.ToggleOverlay();
-            break;
-
         case 'S':
-            m_controller.m_audioManager->ChangeSpectrumScale(1);
+            m_actionQueue.push_back(InputAction::CycleSpectrumScale);
             break;
-
         case VK_UP:
-            m_controller.m_audioManager->ChangeAmplification(-0.1f);
+            m_actionQueue.push_back(InputAction::IncreaseAmplification);
             break;
-
         case VK_DOWN:
-            m_controller.m_audioManager->ChangeAmplification(0.1f);
+            m_actionQueue.push_back(InputAction::DecreaseAmplification);
             break;
-
         case VK_LEFT:
-            m_controller.m_audioManager->ChangeFFTWindow(-1);
+            m_actionQueue.push_back(InputAction::PrevFFTWindow);
             break;
-
         case VK_RIGHT:
-            m_controller.m_audioManager->ChangeFFTWindow(1);
+            m_actionQueue.push_back(InputAction::NextFFTWindow);
             break;
-
         case VK_SUBTRACT:
         case VK_OEM_MINUS:
-            m_controller.m_audioManager->ChangeBarCount(-4);
+            m_actionQueue.push_back(InputAction::DecreaseBarCount);
             break;
-
         case VK_ADD:
         case VK_OEM_PLUS:
-            m_controller.m_audioManager->ChangeBarCount(4);
+            m_actionQueue.push_back(InputAction::IncreaseBarCount);
             break;
-
+        case 'R':
+            m_actionQueue.push_back(InputAction::SwitchRenderer);
+            break;
+        case 'Q':
+            m_actionQueue.push_back(InputAction::CycleQuality);
+            break;
+        case 'O':
+            m_actionQueue.push_back(InputAction::ToggleOverlay);
+            break;
         case VK_ESCAPE:
-            if (m_controller.m_windowManager &&
-                m_controller.m_windowManager->IsOverlayMode()) {
-                m_controller.ToggleOverlay();
-            }
-            else if (m_controller.m_windowManager) {
-                auto* mainWindow = m_controller.m_windowManager->GetMainWindow();
-                if (mainWindow) {
-                    mainWindow->Close();
-                }
-            }
+            m_actionQueue.push_back(InputAction::Exit);
             break;
-        }
-    }
-
-    void InputManager::OnMouseMove(int x, int y) {
-        if (m_controller.m_windowManager) {
-            auto* colorPicker = m_controller.m_windowManager->GetColorPicker();
-            if (colorPicker && colorPicker->IsVisible()) {
-                colorPicker->HandleMouseMove(x, y);
-            }
-        }
-    }
-
-    void InputManager::OnMouseClick(int x, int y) {
-        if (m_controller.m_windowManager) {
-            auto* colorPicker = m_controller.m_windowManager->GetColorPicker();
-            if (colorPicker && colorPicker->IsVisible()) {
-                colorPicker->HandleMouseClick(x, y);
-            }
+        default:
+            break;
         }
     }
 

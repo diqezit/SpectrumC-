@@ -27,6 +27,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="AudioCaptureEngine.h" />
     <ClInclude Include="AudioManager.h" />
     <ClInclude Include="ControllerCore.h" />
     <ClInclude Include="AudioCapture.h" />
@@ -36,6 +37,7 @@
     <ClInclude Include="ColorPicker.h" />
     <ClInclude Include="Common.h" />
     <ClInclude Include="CubesRenderer.h" />
+    <ClInclude Include="EventBus.h" />
     <ClInclude Include="FFTProcessor.h" />
     <ClInclude Include="FireRenderer.h" />
     <ClInclude Include="FrequencyMapper.h" />
@@ -43,10 +45,9 @@
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="IRenderer.h" />
     <ClInclude Include="LedPanelRenderer.h" />
-    <ClInclude Include="OverlayWindow.h" />
     <ClInclude Include="RendererManager.h" />
     <ClInclude Include="SpectrumAnalyzer.h" />
-    <ClInclude Include="SpectrumProcessor.h" />
+    <ClInclude Include="SpectrumPostProcessor.h" />
     <ClInclude Include="Types.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="WASAPIHelper.h" />
@@ -59,6 +60,7 @@
     <Text Include="CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="AudioCaptureEngine.cpp" />
     <ClCompile Include="AudioManager.cpp" />
     <ClCompile Include="ControllerCore.cpp" />
     <ClCompile Include="AudioCapture.cpp" />
@@ -74,10 +76,9 @@
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="LedPanelRenderer.cpp" />
     <ClCompile Include="Application.cpp" />
-    <ClCompile Include="OverlayWindow.cpp" />
     <ClCompile Include="RendererManager.cpp" />
     <ClCompile Include="SpectrumAnalyzer.cpp" />
-    <ClCompile Include="SpectrumProcessor.cpp" />
+    <ClCompile Include="SpectrumPostProcessor.cpp" />
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="WASAPIHelper.cpp" />
     <ClCompile Include="WaveRenderer.cpp" />

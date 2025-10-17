@@ -1,77 +1,54 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// ControllerCore.cpp: Implementation of the Controller class.
+// ControllerCore.cpp: Implementation of the main application controller.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 #include "ControllerCore.h"
+#include "WindowManager.h"
+#include "AudioManager.h"
+#include "RendererManager.h"
 #include "InputManager.h"
+#include "WindowHelper.h"
+#include "GraphicsContext.h"
+#include "ColorPicker.h"
+#include "EventBus.h"
 
 namespace Spectrum {
 
     ControllerCore::ControllerCore(HINSTANCE hInstance)
         : m_hInstance(hInstance) {
-        m_windowManager = std::make_unique<WindowManager>(hInstance);
-        m_inputManager = std::make_unique<InputManager>(*this);
-        m_audioManager = std::make_unique<AudioManager>();
     }
 
     ControllerCore::~ControllerCore() = default;
 
     bool ControllerCore::Initialize() {
-        if (!InitializeComponents()) return false;
+        if (!InitializeManagers()) {
+            return false;
+        }
         PrintWelcomeMessage();
         return true;
     }
 
-    bool ControllerCore::InitializeComponents() {
-        // Initialize window manager
+    bool ControllerCore::InitializeManagers() {
+        m_eventBus = std::make_unique<EventBus>();
+
+        m_windowManager = std::make_unique<WindowManager>(m_hInstance, this, m_eventBus.get());
         if (!m_windowManager->Initialize()) {
-            LOG_ERROR("Failed to initialize window manager");
             return false;
         }
 
-        // Setup window callbacks
-        m_windowManager->SetKeyCallback([this](int key) {
-            m_inputManager->OnKeyPress(key);
-            });
+        m_inputManager = std::make_unique<InputManager>();
 
-        m_windowManager->SetMouseMoveCallback([this](int x, int y) {
-            m_inputManager->OnMouseMove(x, y);
-            });
-
-        m_windowManager->SetMouseClickCallback([this](int x, int y) {
-            m_inputManager->OnMouseClick(x, y);
-            });
-
-        m_windowManager->SetResizeCallback([this](int w, int h) {
-            OnResize(w, h);
-            });
-
-        m_windowManager->SetCloseCallback([this]() {
-            OnClose();
-            });
-
-        // Setup color picker callback
-        if (auto* picker = m_windowManager->GetColorPicker()) {
-            picker->SetOnColorSelectedCallback([this](const Color& color) {
-                if (m_rendererManager && m_rendererManager->GetCurrentRenderer()) {
-                    m_rendererManager->GetCurrentRenderer()->SetPrimaryColor(color);
-                }
-                });
+        m_audioManager = std::make_unique<AudioManager>(m_eventBus.get());
+        if (!m_audioManager->Initialize()) {
+            return false;
         }
 
-        // Initialize audio
-        if (!m_audioManager->Initialize()) return false;
-
-        // Initialize renderer
-        m_rendererManager = std::make_unique<RendererManager>();
-        if (!m_rendererManager->Initialize()) return false;
-
-        if (auto* graphics = m_windowManager->GetGraphics()) {
-            m_rendererManager->SetCurrentRenderer(
-                m_rendererManager->GetCurrentStyle(),
-                graphics
-            );
+        m_rendererManager = std::make_unique<RendererManager>(m_eventBus.get(), m_windowManager.get());
+        if (!m_rendererManager->Initialize()) {
+            return false;
         }
+        m_rendererManager->SetCurrentRenderer(
+            m_rendererManager->GetCurrentStyle(), m_windowManager->GetGraphics()
+        );
 
         return true;
     }
@@ -106,6 +83,7 @@ namespace Spectrum {
             float dt = m_timer.GetElapsedSeconds();
             if (dt >= FRAME_TIME) {
                 m_timer.Reset();
+                ProcessInput();
                 Update(dt);
                 Render();
             }
@@ -115,55 +93,140 @@ namespace Spectrum {
         }
     }
 
+    void ControllerCore::ProcessInput() {
+        m_inputManager->Update();
+        m_actions = m_inputManager->GetActions();
+        for (const auto& action : m_actions) {
+            m_eventBus->Publish(action);
+        }
+    }
+
     void ControllerCore::Update(float deltaTime) {
         m_audioManager->Update(deltaTime);
     }
 
     void ControllerCore::Render() {
         auto* graphics = m_windowManager->GetGraphics();
-        if (!graphics) return;
+        if (!graphics || !m_windowManager->IsActive()) {
+            return;
+        }
 
-        if (auto rt = graphics->GetRenderTarget()) {
-            auto state = rt->CheckWindowState();
-            if (state & D2D1_WINDOW_STATE_OCCLUDED) return;
+        if (auto* rt = graphics->GetRenderTarget()) {
+            if (rt->CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED) {
+                return;
+            }
         }
 
         graphics->BeginDraw();
 
-        const Color clear = m_windowManager->IsOverlayMode()
+        const Color clearColor = m_windowManager->IsOverlayMode()
             ? Color::Transparent()
             : Color::FromRGB(13, 13, 26);
-        graphics->Clear(clear);
+        graphics->Clear(clearColor);
 
-        if (m_rendererManager) {
-            SpectrumData spectrum = m_audioManager->GetSpectrum();
-            m_rendererManager->Render(*graphics, spectrum);
+        SpectrumData spectrum = m_audioManager->GetSpectrum();
+
+        if (m_rendererManager->GetCurrentRenderer()) {
+            m_rendererManager->GetCurrentRenderer()->Render(*graphics, spectrum);
         }
 
-        // Draw color picker only in normal mode
         if (auto* picker = m_windowManager->GetColorPicker()) {
             if (picker->IsVisible() && !m_windowManager->IsOverlayMode()) {
                 picker->Draw(*graphics);
             }
         }
 
-        graphics->EndDraw();
+        HRESULT hr = graphics->EndDraw();
+        if (hr == D2DERR_RECREATE_TARGET) {
+            HWND hwnd = m_windowManager->GetCurrentHwnd();
+            if (hwnd) {
+                m_windowManager->RecreateGraphicsAndNotify(hwnd);
+            }
+        }
     }
 
     void ControllerCore::OnResize(int width, int height) {
+        if (m_windowManager) {
+            auto* graphics = m_windowManager->GetGraphics();
+            if (graphics) {
+                graphics->Resize(width, height);
+            }
+        }
         if (m_rendererManager) {
             m_rendererManager->OnResize(width, height);
         }
     }
 
-    void ControllerCore::OnClose() {
-        LOG_INFO("Application closing.");
-    }
-
-    void ControllerCore::ToggleOverlay() {
-        if (m_windowManager) {
-            m_windowManager->ToggleOverlay();
+    void ControllerCore::SetPrimaryColor(const Color& color) {
+        if (m_rendererManager && m_rendererManager->GetCurrentRenderer()) {
+            m_rendererManager->GetCurrentRenderer()->SetPrimaryColor(color);
         }
     }
 
-} // namespace Spectrum
+    void ControllerCore::OnClose() {
+        if (m_windowManager && m_windowManager->IsRunning()) {
+            if (auto* wnd = m_windowManager->GetMainWindow()) {
+                wnd->SetRunning(false);
+            }
+        }
+    }
+
+    LRESULT ControllerCore::HandleWindowMessage(
+        HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
+    ) {
+        switch (msg) {
+        case WM_CLOSE:
+            OnClose();
+            return 0;
+        case WM_DESTROY:
+            PostQuitMessage(0);
+            return 0;
+        case WM_SIZE: {
+            int width = LOWORD(lParam);
+            int height = HIWORD(lParam);
+            if (wParam != SIZE_MINIMIZED) {
+                OnResize(width, height);
+            }
+            return 0;
+        }
+        case WM_MOUSEMOVE:
+        case WM_LBUTTONDOWN:
+            return HandleMouseMessage(msg, lParam);
+        case WM_NCHITTEST:
+            // Allow dragging window in overlay mode
+            if (m_windowManager->IsOverlayMode()) {
+                return HTCAPTION;
+            }
+            break;
+        case WM_ERASEBKGND:
+            return 1;
+        }
+        return DefWindowProc(hwnd, msg, wParam, lParam);
+    }
+
+    LRESULT ControllerCore::HandleMouseMessage(UINT msg, LPARAM lParam) {
+        int x, y;
+        WindowUtils::ExtractMouse(lParam, x, y);
+
+        auto* picker = m_windowManager->GetColorPicker();
+        if (!picker || !picker->IsVisible()) {
+            return 0;
+        }
+
+        bool needsRedraw = false;
+        if (msg == WM_MOUSEMOVE) {
+            needsRedraw = picker->HandleMouseMove(x, y);
+        }
+        else if (msg == WM_LBUTTONDOWN) {
+            needsRedraw = picker->HandleMouseClick(x, y);
+        }
+
+        if (needsRedraw) {
+            HWND hwnd = m_windowManager->GetCurrentHwnd();
+            if (hwnd) {
+                InvalidateRect(hwnd, NULL, FALSE);
+            }
+        }
+        return 0;
+    }
+}

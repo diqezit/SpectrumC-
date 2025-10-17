@@ -17,8 +17,45 @@
 namespace Spectrum {
     namespace Utils {
 
-        // Math utilities
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+        // Templated enum cycler
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+        template<typename TEnum>
+        [[nodiscard]] inline TEnum CycleEnum(TEnum current, int direction) {
+            static_assert(std::is_enum_v<TEnum>);
+            using TUnderlying = std::underlying_type_t<TEnum>;
 
+            const auto count = static_cast<TUnderlying>(TEnum::Count);
+            auto next = static_cast<TUnderlying>(current) + direction;
+
+            return static_cast<TEnum>((next % count + count) % count);
+        }
+
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+        // Enum to string converters
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+        inline std::string_view ToString(FFTWindowType type) {
+            switch (type) {
+            case FFTWindowType::Hann: return "Hann";
+            case FFTWindowType::Hamming: return "Hamming";
+            case FFTWindowType::Blackman: return "Blackman";
+            case FFTWindowType::Rectangular: return "Rectangular";
+            default: return "Unknown";
+            }
+        }
+
+        inline std::string_view ToString(SpectrumScale type) {
+            switch (type) {
+            case SpectrumScale::Linear: return "Linear";
+            case SpectrumScale::Logarithmic: return "Logarithmic";
+            case SpectrumScale::Mel: return "Mel";
+            default: return "Unknown";
+            }
+        }
+
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+        // Math utilities
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         template<typename T>
         [[nodiscard]] inline T Clamp(T value, T minVal, T maxVal) noexcept {
             return value < minVal ? minVal : (value > maxVal ? maxVal : value);
@@ -34,27 +71,37 @@ namespace Spectrum {
             return a + (b - a) * t;
         }
 
-        [[nodiscard]] inline float Normalize(float value,
+        [[nodiscard]] inline float Normalize(
+            float value,
             float minVal,
-            float maxVal) noexcept {
+            float maxVal
+        ) noexcept {
             const float denom = (maxVal - minVal);
-            if (denom == 0.0f) return 0.0f;
+            if (denom == 0.0f) {
+                return 0.0f;
+            }
             return (value - minVal) / denom;
         }
 
-        [[nodiscard]] inline float Map(float value,
+        [[nodiscard]] inline float Map(
+            float value,
             float inMin,
             float inMax,
             float outMin,
-            float outMax) noexcept {
+            float outMax
+        ) noexcept {
             const float denom = (inMax - inMin);
-            if (denom == 0.0f) return outMin;
+            if (denom == 0.0f) {
+                return outMin;
+            }
             return outMin + (value - inMin) * (outMax - outMin) / denom;
         }
 
-        [[nodiscard]] inline float SmoothStep(float edge0,
+        [[nodiscard]] inline float SmoothStep(
+            float edge0,
             float edge1,
-            float x) noexcept {
+            float x
+        ) noexcept {
             const float t = Saturate((x - edge0) / (edge1 - edge0));
             return t * t * (3.0f - 2.0f * t);
         }
@@ -80,8 +127,9 @@ namespace Spectrum {
             return 700.0f * (std::pow(10.0f, mel / 2595.0f) - 1.0f);
         }
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         // Color utilities
-
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         struct HSV {
             float h, s, v;
             HSV(float hIn = 0.0f, float sIn = 0.0f, float vIn = 0.0f)
@@ -99,36 +147,47 @@ namespace Spectrum {
         Color AdjustBrightness(const Color& color, float factor);
         Color AdjustSaturation(const Color& color, float factor);
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         // String utilities
-
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         std::wstring StringToWString(const std::string& str);
         std::string  WStringToString(const std::wstring& wstr);
 
         template<typename... Args>
-        [[nodiscard]] std::string Format(const std::string& fmt, Args... args) {
+        [[nodiscard]] std::string Format(
+            const std::string& fmt, Args... args
+        ) {
             int size = std::snprintf(nullptr, 0, fmt.c_str(), args...) + 1;
-            if (size <= 0) return std::string();
+            if (size <= 0) {
+                return std::string();
+            }
 
             std::unique_ptr<char[]> buf(new char[static_cast<size_t>(size)]);
-            std::snprintf(buf.get(), static_cast<size_t>(size), fmt.c_str(), args...);
-            return std::string(buf.get(), buf.get() + (static_cast<size_t>(size) - 1));
+            std::snprintf(
+                buf.get(), static_cast<size_t>(size), fmt.c_str(), args...
+            );
+            return std::string(
+                buf.get(), buf.get() + (static_cast<size_t>(size) - 1)
+            );
         }
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         // Window utilities
-
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         [[nodiscard]] inline Point GetMousePosition(LPARAM lParam) noexcept {
-            return Point(
+            return Point{
                 static_cast<float>(GET_X_LPARAM(lParam)),
                 static_cast<float>(GET_Y_LPARAM(lParam))
-            );
+            };
         }
 
         [[nodiscard]] inline bool IsKeyPressed(int vkCode) noexcept {
             return (GetAsyncKeyState(vkCode) & 0x8000) != 0;
         }
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         // Time utilities
-
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         class Timer {
         public:
             Timer();
@@ -140,8 +199,9 @@ namespace Spectrum {
             std::chrono::steady_clock::time_point m_startTime;
         };
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         // Random utilities
-
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
         class Random {
         public:
             static Random& Instance();

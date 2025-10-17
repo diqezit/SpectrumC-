@@ -1,313 +1,177 @@
 // AudioCapture.cpp
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// AudioCapture.cpp: Implementation of the AudioCapture class using WASAPI.
+// AudioCapture.cpp: Orchestrator for the audio capture process.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 
 #include "AudioCapture.h"
+#include "AudioCaptureEngine.h"
+#include "WASAPIHelper.h"
 #include <chrono>
 
 namespace Spectrum {
 
-    using namespace WASAPI;
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // PIMPL implementation structure.
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    struct AudioCapture::Implementation {
+        std::unique_ptr<Internal::WasapiInitData> initData;
+        std::unique_ptr<Internal::AudioPacketProcessor> processor;
+        std::unique_ptr<Internal::ICaptureEngine> engine;
 
-    namespace {
-        constexpr DWORD kWaitTimeoutMs = 2000;
+        std::thread captureThread;
+        std::atomic<bool> isCapturing{ false };
+        std::atomic<bool> stopRequested{ false };
+        std::atomic<bool> isInitialized{ false };
 
-        inline void CloseHandleSafe(HANDLE& h) {
-            if (!h) return;
-            CloseHandle(h);
-            h = nullptr;
-        }
-
-        inline bool ProcessPacket(
-            IAudioCaptureClient* captureClient,
-            IAudioCaptureCallback* callback,
-            std::mutex& callbackMutex,
-            int channels
-        ) {
-            BYTE* data = nullptr;
-            UINT32 frames = 0;
-            DWORD flags = 0;
-
-            HRESULT hr = captureClient->GetBuffer(&data, &frames, &flags, nullptr, nullptr);
-            if (FAILED(hr)) return false;
-
-            if (frames && data && !(flags & AUDCLNT_BUFFERFLAGS_SILENT)) {
-                std::lock_guard<std::mutex> lock(callbackMutex);
-                if (callback) {
-                    callback->OnAudioData(
-                        reinterpret_cast<float*>(data),
-                        static_cast<size_t>(frames) * channels,
-                        channels
-                    );
-                }
+        ~Implementation() {
+            if (initData && initData->waveFormat) {
+                CoTaskMemFree(initData->waveFormat);
+                initData->waveFormat = nullptr;
             }
-
-            return SUCCEEDED(captureClient->ReleaseBuffer(frames));
+            if (initData && initData->samplesEvent) {
+                CloseHandle(initData->samplesEvent);
+                initData->samplesEvent = nullptr;
+            }
         }
-    }
 
-    AudioCapture::AudioCapture()
-        : m_waveFormat(nullptr)
-        , m_samplesEvent(nullptr)
-        , m_capturing(false)
-        , m_stopRequested(false)
-        , m_isInitialized(false)
-        , m_useEventMode(false)
-        , m_callback(nullptr) {
-    }
+        void CaptureLoop() {
+            WASAPI::ScopedCOMInitializer threadCom;
+            if (engine && processor) {
+                engine->Run(stopRequested, *processor);
+            }
+        }
+    };
+
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // AudioCapture public API implementation.
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+
+    AudioCapture::AudioCapture() : m_pimpl(std::make_unique<Implementation>()) {}
 
     AudioCapture::~AudioCapture() {
         Stop();
-        Cleanup();
-    }
-
-    void AudioCapture::Cleanup() noexcept {
-        if (m_waveFormat) {
-            CoTaskMemFree(m_waveFormat);
-            m_waveFormat = nullptr;
-        }
-        CloseHandleSafe(m_samplesEvent);
     }
 
     bool AudioCapture::Initialize() {
-        if (m_isInitialized) return true;
-        if (!m_comInitializer.IsInitialized()) return false;
-
-        for (int retry = 0; retry < MAX_INIT_RETRIES; ++retry) {
-            if (InitializeDevice() && InitializeClient()) {
-                m_isInitialized = true;
-                LogAudioInfo();
-                return true;
-            }
-
-            if (retry < MAX_INIT_RETRIES - 1) {
-                LOG_INFO("Initialization attempt " << (retry + 1) << " failed, retrying...");
-                std::this_thread::sleep_for(std::chrono::milliseconds(INIT_RETRY_DELAY_MS));
-                ResetAudioClient();
-            }
+        if (m_pimpl->isInitialized) {
+            return true;
         }
 
-        LOG_ERROR("Failed to initialize audio capture after " << MAX_INIT_RETRIES << " attempts");
-        return false;
-    }
+        Internal::WasapiInitializer initializer;
+        m_pimpl->initData = initializer.Initialize();
 
-    void AudioCapture::LogAudioInfo() const {
-        LOG_INFO("Audio capture initialized successfully");
-        LOG_INFO("Sample rate: " << GetSampleRate() << " Hz");
-        LOG_INFO("Channels: " << GetChannels());
-        LOG_INFO("Bits per sample: " << GetBitsPerSample());
-        LOG_INFO("Mode: " << (m_useEventMode ? "Event-driven" : "Polling"));
-    }
-
-    bool AudioCapture::InitializeDevice() {
-        HRESULT hr = CoCreateInstance(
-            __uuidof(MMDeviceEnumerator),
-            nullptr,
-            CLSCTX_ALL,
-            __uuidof(IMMDeviceEnumerator),
-            reinterpret_cast<void**>(m_deviceEnumerator.GetAddressOf())
-        );
-        if (!CheckResult(hr, "Failed to create device enumerator"))
-            return false;
-
-        hr = m_deviceEnumerator->GetDefaultAudioEndpoint(
-            eRender, eConsole, m_device.GetAddressOf()
-        );
-        return CheckResult(hr, "Failed to get default audio endpoint");
-    }
-
-    bool AudioCapture::InitializeClient() {
-        HRESULT hr = m_device->Activate(
-            __uuidof(IAudioClient),
-            CLSCTX_ALL,
-            nullptr,
-            reinterpret_cast<void**>(m_audioClient.GetAddressOf())
-        );
-        if (!CheckResult(hr, "Failed to activate audio client"))
-            return false;
-
-        hr = m_audioClient->GetMixFormat(&m_waveFormat);
-        if (!CheckResult(hr, "Failed to get mix format"))
-            return false;
-
-        m_samplesEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
-        if (!m_samplesEvent) {
-            LOG_ERROR("Failed to create event for audio capture");
+        if (!m_pimpl->initData) {
+            LOG_ERROR("AudioCapture failed: WASAPI device initialization error.");
             return false;
         }
 
-        // Try event-driven mode first
-        const DWORD eventModeFlags = AUDCLNT_STREAMFLAGS_LOOPBACK |
-            AUDCLNT_STREAMFLAGS_EVENTCALLBACK |
-            AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM;
+        auto* data = m_pimpl->initData.get();
+        int channels = data->waveFormat ? data->waveFormat->nChannels : 0;
 
-        if (TryInitializeMode(eventModeFlags, true)) {
-            m_useEventMode = true;
-        }
-        else {
-            ResetAudioClient();
-            const DWORD pollingModeFlags = AUDCLNT_STREAMFLAGS_LOOPBACK |
-                AUDCLNT_STREAMFLAGS_AUTOCONVERTPCM;
-            if (TryInitializeMode(pollingModeFlags, false)) {
-                m_useEventMode = false;
-            }
-            else {
-                CloseHandleSafe(m_samplesEvent);
-                return false;
-            }
-        }
-
-        return SetupCaptureClient();
-    }
-
-    bool AudioCapture::TryInitializeMode(DWORD streamFlags, bool setEventHandle) {
-        HRESULT hr = m_audioClient->Initialize(
-            AUDCLNT_SHAREMODE_SHARED,
-            streamFlags,
-            BUFFER_DURATION,
-            0,
-            m_waveFormat,
-            nullptr
+        m_pimpl->processor = std::make_unique<Internal::AudioPacketProcessor>(
+            data->captureClient.Get(), channels
         );
 
-        if (SUCCEEDED(hr) && setEventHandle) {
-            hr = m_audioClient->SetEventHandle(m_samplesEvent);
-        }
-
-        return SUCCEEDED(hr);
-    }
-
-    void AudioCapture::ResetAudioClient() {
-        m_audioClient.Reset();
-        m_captureClient.Reset();
-
-        if (m_device) {
-            m_device->Activate(
-                __uuidof(IAudioClient),
-                CLSCTX_ALL,
-                nullptr,
-                reinterpret_cast<void**>(m_audioClient.GetAddressOf())
+        if (data->useEventMode) {
+            m_pimpl->engine = std::make_unique<Internal::EventDrivenEngine>(
+                data->samplesEvent
             );
         }
-    }
+        else {
+            m_pimpl->engine = std::make_unique<Internal::PollingEngine>();
+            if (data->samplesEvent) {
+                CloseHandle(data->samplesEvent);
+                data->samplesEvent = nullptr;
+            }
+        }
 
-    bool AudioCapture::SetupCaptureClient() {
-        HRESULT hr = m_audioClient->GetService(
-            __uuidof(IAudioCaptureClient),
-            reinterpret_cast<void**>(m_captureClient.GetAddressOf())
+        m_pimpl->isInitialized = true;
+        LOG_INFO(
+            "Audio capture initialized. Mode: "
+            << (data->useEventMode ? "Event-driven" : "Polling")
         );
-        return CheckResult(hr, "Failed to get capture client service");
+        LOG_INFO(
+            "Format: " << GetSampleRate() << " Hz, " << GetChannels()
+            << " channels, " << GetBitsPerSample() << " bits"
+        );
+        return true;
     }
 
     bool AudioCapture::Start() {
-        if (!m_isInitialized) {
-            LOG_ERROR("Cannot start capture: not initialized.");
+        if (!IsInitialized() || IsCapturing()) {
+            return IsCapturing();
+        }
+
+        HRESULT hr = m_pimpl->initData->audioClient->Start();
+        if (FAILED(hr)) {
+            LOG_INFO("First audio client start attempt failed, retrying...");
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+            hr = m_pimpl->initData->audioClient->Start();
+        }
+        if (!WASAPI::CheckResult(hr, "Failed to start audio client")) {
             return false;
         }
-        if (m_capturing) return true;
 
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-        HRESULT hr = m_audioClient->Start();
-        if (FAILED(hr)) {
-            LOG_INFO("First start attempt failed, retrying...");
-            std::this_thread::sleep_for(std::chrono::milliseconds(500));
-            hr = m_audioClient->Start();
-        }
-
-        if (!CheckResult(hr, "Failed to start audio client")) return false;
-
-        m_stopRequested = false;
-        m_capturing = true;
-        m_captureThread = std::thread(&AudioCapture::CaptureLoop, this);
-
-        LOG_INFO("Audio capture started");
+        m_pimpl->stopRequested = false;
+        m_pimpl->isCapturing = true;
+        m_pimpl->captureThread = std::thread(
+            &Implementation::CaptureLoop, m_pimpl.get()
+        );
+        LOG_INFO("Audio capture started.");
         return true;
     }
 
     void AudioCapture::Stop() noexcept {
-        if (!m_capturing) return;
+        if (!IsCapturing()) {
+            return;
+        }
 
-        m_stopRequested = true;
-        if (m_samplesEvent && m_useEventMode) SetEvent(m_samplesEvent);
-        if (m_captureThread.joinable()) m_captureThread.join();
-        if (m_audioClient) m_audioClient->Stop();
+        m_pimpl->stopRequested = true;
+        if (m_pimpl->initData && m_pimpl->initData->useEventMode
+            && m_pimpl->initData->samplesEvent) {
+            SetEvent(m_pimpl->initData->samplesEvent);
+        }
+        if (m_pimpl->captureThread.joinable()) {
+            m_pimpl->captureThread.join();
+        }
+        if (m_pimpl->initData && m_pimpl->initData->audioClient) {
+            m_pimpl->initData->audioClient->Stop();
+        }
 
-        m_capturing = false;
-        LOG_INFO("Audio capture stopped");
+        m_pimpl->isCapturing = false;
+        LOG_INFO("Audio capture stopped.");
     }
 
     void AudioCapture::SetCallback(IAudioCaptureCallback* callback) noexcept {
-        std::lock_guard<std::mutex> lock(m_callbackMutex);
-        m_callback = callback;
+        if (m_pimpl->processor) {
+            m_pimpl->processor->SetCallback(callback);
+        }
+    }
+
+    bool AudioCapture::IsCapturing() const noexcept {
+        return m_pimpl->isCapturing;
+    }
+
+    bool AudioCapture::IsInitialized() const noexcept {
+        return m_pimpl->isInitialized;
     }
 
     int AudioCapture::GetSampleRate() const noexcept {
-        return m_waveFormat ? static_cast<int>(m_waveFormat->nSamplesPerSec) : 0;
+        return (m_pimpl->initData && m_pimpl->initData->waveFormat)
+            ? static_cast<int>(m_pimpl->initData->waveFormat->nSamplesPerSec)
+            : 0;
     }
 
     int AudioCapture::GetChannels() const noexcept {
-        return m_waveFormat ? static_cast<int>(m_waveFormat->nChannels) : 0;
+        return (m_pimpl->initData && m_pimpl->initData->waveFormat)
+            ? static_cast<int>(m_pimpl->initData->waveFormat->nChannels)
+            : 0;
     }
 
     int AudioCapture::GetBitsPerSample() const noexcept {
-        return m_waveFormat ? static_cast<int>(m_waveFormat->wBitsPerSample) : 0;
-    }
-
-    void AudioCapture::CaptureLoop() {
-        WASAPI::ScopedCOMInitializer threadCom;
-        if (!threadCom.IsInitialized()) return;
-
-        if (m_useEventMode) {
-            RunEventDrivenCapture();
-        }
-        else {
-            RunPollingCapture();
-        }
-    }
-
-    void AudioCapture::RunEventDrivenCapture() {
-        while (!m_stopRequested && m_samplesEvent) {
-            DWORD waitResult = WaitForSingleObject(m_samplesEvent, kWaitTimeoutMs);
-
-            if (waitResult == WAIT_OBJECT_0) {
-                if (!ProcessAudioPackets()) return;
-            }
-            else if (waitResult != WAIT_TIMEOUT) {
-                LOG_ERROR("WaitForSingleObject failed in CaptureLoop");
-                return;
-            }
-        }
-    }
-
-    void AudioCapture::RunPollingCapture() {
-        while (!m_stopRequested) {
-            std::this_thread::sleep_for(std::chrono::milliseconds(POLLING_INTERVAL_MS));
-
-            if (!ProcessAudioPackets()) {
-                if (!m_stopRequested) {
-                    LOG_ERROR("Error in polling mode capture loop");
-                }
-                return;
-            }
-        }
-    }
-
-    bool AudioCapture::ProcessAudioPackets() {
-        const int channels = GetChannels();
-        UINT32 packetLen = 0;
-
-        while (true) {
-            HRESULT hr = m_captureClient->GetNextPacketSize(&packetLen);
-            if (!CheckResult(hr, "GetNextPacketSize failed")) return false;
-            if (packetLen == 0) break;
-
-            if (!ProcessPacket(m_captureClient.Get(), m_callback, m_callbackMutex, channels))
-                return false;
-        }
-
-        return true;
+        return (m_pimpl->initData && m_pimpl->initData->waveFormat)
+            ? static_cast<int>(m_pimpl->initData->waveFormat->wBitsPerSample)
+            : 0;
     }
 
 } // namespace Spectrum
