@@ -1,3 +1,6 @@
+// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+// SpectrumAnalyzer.h: Analyzes audio data to produce a frequency spectrum.
+// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #ifndef SPECTRUM_CPP_SPECTRUM_ANALYZER_H
 #define SPECTRUM_CPP_SPECTRUM_ANALYZER_H
 
@@ -24,14 +27,10 @@ namespace Spectrum {
         };
 
     public:
-        SpectrumAnalyzer(
-            size_t barCount = DEFAULT_BAR_COUNT,
-            size_t fftSize = DEFAULT_FFT_SIZE
-        );
+        SpectrumAnalyzer(size_t barCount = DEFAULT_BAR_COUNT, size_t fftSize = DEFAULT_FFT_SIZE);
 
         void OnAudioData(const float* data, size_t samples, int channels) override;
         void Update();
-        void GenerateTestData(float timeOffset);
 
         void SetBarCount(size_t newBarCount);
         void SetAmplification(float newAmplification);
@@ -48,7 +47,6 @@ namespace Spectrum {
 
     private:
         void ProcessSingleFFTChunk();
-        SpectrumData GenerateTestSpectrum(float timeOffset);
 
         size_t m_barCount;
         SpectrumScale m_scaleType;

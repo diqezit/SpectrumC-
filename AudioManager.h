@@ -1,16 +1,15 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// AudioManager.h: Manages audio capture and analysis.
+// AudioManager.h: Manages audio sources and configuration.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 #ifndef SPECTRUM_CPP_AUDIO_MANAGER_H
 #define SPECTRUM_CPP_AUDIO_MANAGER_H
 
 #include "Common.h"
-#include "AudioCapture.h"
-#include "SpectrumAnalyzer.h"
 
 namespace Spectrum {
 
     class EventBus;
+    class IAudioSource;
 
     class AudioManager {
     public:
@@ -31,32 +30,14 @@ namespace Spectrum {
         bool IsCapturing() const { return m_isCapturing; }
         bool IsAnimating() const { return m_isAnimating; }
 
-        FFTWindowType GetCurrentFFTWindowType() const {
-            return m_audioConfig.windowType;
-        }
-        SpectrumScale GetCurrentSpectrumScale() const {
-            return m_audioConfig.scaleType;
-        }
-        float GetCurrentAmplification() const {
-            return m_analyzer ? m_analyzer->GetAmplification() : 0.0f;
-        }
-        size_t GetCurrentBarCount() const {
-            return m_audioConfig.barCount;
-        }
-
     private:
-        bool InitializeAudioCapture();
-        bool InitializeAnalyzer();
-        bool StartCaptureInternal();
-        void StopCaptureInternal();
-
-        std::unique_ptr<AudioCapture> m_audioCapture;
-        std::unique_ptr<SpectrumAnalyzer> m_analyzer;
+        std::unique_ptr<IAudioSource> m_realtimeSource;
+        std::unique_ptr<IAudioSource> m_animatedSource;
+        IAudioSource* m_currentSource = nullptr;
 
         AudioConfig m_audioConfig;
-        bool m_isCapturing;
-        bool m_isAnimating;
-        float m_animationTime;
+        bool m_isCapturing = false;
+        bool m_isAnimating = false;
     };
 
 }

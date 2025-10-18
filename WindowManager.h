@@ -6,13 +6,13 @@
 
 #include "Common.h"
 #include "MainWindow.h"
-#include "GraphicsContext.h"
-#include "ColorPicker.h"
 
 namespace Spectrum {
 
     class ControllerCore;
     class EventBus;
+    class GraphicsContext;
+    class UIManager;
 
     class WindowManager {
     public:
@@ -29,7 +29,7 @@ namespace Spectrum {
         bool IsActive() const;
 
         GraphicsContext* GetGraphics() const { return m_graphics.get(); }
-        ColorPicker* GetColorPicker() const { return m_colorPicker.get(); }
+        UIManager* GetUIManager() const { return m_uiManager.get(); }
         HWND GetCurrentHwnd() const;
         ControllerCore* GetController() const { return m_controller; }
         MainWindow* GetMainWindow() const { return m_mainWnd.get(); }
@@ -39,7 +39,6 @@ namespace Spectrum {
     private:
         bool InitializeMainWindow();
         bool InitializeOverlayWindow();
-        bool InitializeUI();
 
         void ActivateOverlayMode();
         void DeactivateOverlayMode();
@@ -52,7 +51,7 @@ namespace Spectrum {
         std::unique_ptr<MainWindow> m_overlayWnd;
 
         std::unique_ptr<GraphicsContext> m_graphics;
-        std::unique_ptr<ColorPicker> m_colorPicker;
+        std::unique_ptr<UIManager> m_uiManager;
     };
 
 }

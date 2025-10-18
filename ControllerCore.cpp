@@ -8,7 +8,7 @@
 #include "InputManager.h"
 #include "WindowHelper.h"
 #include "GraphicsContext.h"
-#include "ColorPicker.h"
+#include "UIManager.h"
 #include "EventBus.h"
 
 namespace Spectrum {
@@ -46,6 +46,7 @@ namespace Spectrum {
         if (!m_rendererManager->Initialize()) {
             return false;
         }
+
         m_rendererManager->SetCurrentRenderer(
             m_rendererManager->GetCurrentStyle(), m_windowManager->GetGraphics()
         );
@@ -130,9 +131,9 @@ namespace Spectrum {
             m_rendererManager->GetCurrentRenderer()->Render(*graphics, spectrum);
         }
 
-        if (auto* picker = m_windowManager->GetColorPicker()) {
-            if (picker->IsVisible() && !m_windowManager->IsOverlayMode()) {
-                picker->Draw(*graphics);
+        if (auto* uiManager = m_windowManager->GetUIManager()) {
+            if (!m_windowManager->IsOverlayMode()) {
+                uiManager->Draw(*graphics);
             }
         }
 
@@ -208,17 +209,9 @@ namespace Spectrum {
         int x, y;
         WindowUtils::ExtractMouse(lParam, x, y);
 
-        auto* picker = m_windowManager->GetColorPicker();
-        if (!picker || !picker->IsVisible()) {
-            return 0;
-        }
-
         bool needsRedraw = false;
-        if (msg == WM_MOUSEMOVE) {
-            needsRedraw = picker->HandleMouseMove(x, y);
-        }
-        else if (msg == WM_LBUTTONDOWN) {
-            needsRedraw = picker->HandleMouseClick(x, y);
+        if (auto* uiManager = m_windowManager->GetUIManager()) {
+            needsRedraw = uiManager->HandleMouseMessage(msg, x, y);
         }
 
         if (needsRedraw) {

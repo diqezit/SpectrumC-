@@ -1,0 +1,37 @@
+// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+// RealtimeAudioSource.h: Provides spectrum data from a live audio capture.
+// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+#ifndef SPECTRUM_CPP_REALTIMEAUDIOSOURCE_H
+#define SPECTRUM_CPP_REALTIMEAUDIOSOURCE_H
+
+#include "IAudioSource.h"
+#include "AudioCapture.h"
+#include "SpectrumAnalyzer.h"
+
+namespace Spectrum {
+
+    class RealtimeAudioSource : public IAudioSource {
+    public:
+        explicit RealtimeAudioSource(const AudioConfig& config);
+
+        bool Initialize() override;
+        void Update(float deltaTime) override;
+        SpectrumData GetSpectrum() override;
+
+        void SetAmplification(float amp) override;
+        void SetBarCount(size_t count) override;
+        void SetFFTWindow(FFTWindowType type) override;
+        void SetScaleType(SpectrumScale type) override;
+
+        void StartCapture() override;
+        void StopCapture() override;
+
+    private:
+        std::unique_ptr<AudioCapture> m_audioCapture;
+        std::unique_ptr<SpectrumAnalyzer> m_analyzer;
+        bool m_isCapturing = false;
+    };
+
+}
+
+#endif

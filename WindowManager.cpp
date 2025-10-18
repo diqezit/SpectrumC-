@@ -5,6 +5,8 @@
 #include "ControllerCore.h"
 #include "WindowHelper.h"
 #include "EventBus.h"
+#include "GraphicsContext.h"
+#include "UIManager.h"
 
 namespace Spectrum {
 
@@ -16,6 +18,8 @@ namespace Spectrum {
         m_controller(controller),
         m_isOverlay(false)
     {
+        m_uiManager = std::make_unique<UIManager>(m_controller);
+
         bus->Subscribe(InputAction::ToggleOverlay, [this]() {
             this->ToggleOverlay();
             });
@@ -44,7 +48,7 @@ namespace Spectrum {
         if (!RecreateGraphicsAndNotify(m_mainWnd->GetHwnd())) {
             return false;
         }
-        if (!InitializeUI()) {
+        if (m_uiManager && !m_uiManager->Initialize(*m_graphics)) {
             return false;
         }
 
@@ -67,20 +71,6 @@ namespace Spectrum {
         return m_overlayWnd->Initialize(
             L"Spectrum Overlay", screenW, 300, true, this
         );
-    }
-
-    bool WindowManager::InitializeUI() {
-        m_colorPicker = std::make_unique<ColorPicker>(
-            Point{ 20.0f, 20.0f }, 40.0f
-        );
-        if (!m_colorPicker->Initialize(*m_graphics)) {
-            return false;
-        }
-
-        m_colorPicker->SetOnColorSelectedCallback([this](const Color& color) {
-            m_controller->SetPrimaryColor(color);
-            });
-        return true;
     }
 
     void WindowManager::ProcessMessages() {
@@ -114,8 +104,8 @@ namespace Spectrum {
             return false;
         }
 
-        if (m_colorPicker) {
-            m_colorPicker->RecreateResources(*m_graphics);
+        if (m_uiManager) {
+            m_uiManager->RecreateResources(*m_graphics);
         }
 
         RECT rc;
@@ -137,20 +127,17 @@ namespace Spectrum {
 
     void WindowManager::ActivateOverlayMode() {
         m_mainWnd->Hide();
-        if (m_colorPicker) {
-            m_colorPicker->SetVisible(false);
+
+        if (m_uiManager && m_uiManager->GetColorPicker()) {
+            m_uiManager->GetColorPicker()->SetVisible(false);
         }
 
         HWND newHwnd = m_overlayWnd->GetHwnd();
-
         int screenW, screenH;
         WindowUtils::GetScreenSize(screenW, screenH);
         int overlayH = m_overlayWnd->GetHeight();
         int yPos = screenH - overlayH;
-
-        SetWindowPos(
-            newHwnd, HWND_TOPMOST, 0, yPos, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW
-        );
+        SetWindowPos(newHwnd, HWND_TOPMOST, 0, yPos, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
 
         RecreateGraphicsAndNotify(newHwnd);
     }
@@ -158,8 +145,9 @@ namespace Spectrum {
     void WindowManager::DeactivateOverlayMode() {
         m_overlayWnd->Hide();
         m_mainWnd->Show();
-        if (m_colorPicker) {
-            m_colorPicker->SetVisible(true);
+
+        if (m_uiManager && m_uiManager->GetColorPicker()) {
+            m_uiManager->GetColorPicker()->SetVisible(true);
         }
 
         HWND newHwnd = m_mainWnd->GetHwnd();
