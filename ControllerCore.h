@@ -1,6 +1,7 @@
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// ControllerCore.h: The main application controller.
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+// =-=-=-=-=-=-=-=-=-=-=
+// ControllerCore.h
+// =-=-=-=-=-=-=-=-=-=-=
+
 #ifndef SPECTRUM_CPP_CONTROLLER_CORE_H
 #define SPECTRUM_CPP_CONTROLLER_CORE_H
 
@@ -25,26 +26,38 @@ namespace Spectrum {
         bool Initialize();
         void Run();
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // System & Event Callbacks
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         LRESULT HandleWindowMessage(
             HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
         );
-
         void OnResize(int width, int height);
         void SetPrimaryColor(const Color& color);
         void OnClose();
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Getters for Component Communication
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Provides access to the renderer manager for other components
+        RendererManager* GetRendererManager() const { return m_rendererManager.get(); }
+
     private:
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Internal Logic
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         bool InitializeManagers();
         void PrintWelcomeMessage();
-
         void MainLoop();
         void ProcessInput();
         void Update(float deltaTime);
         void Render();
-
         LRESULT HandleMouseMessage(UINT msg, LPARAM lParam);
 
     private:
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Member State
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         HINSTANCE m_hInstance;
 
         std::unique_ptr<WindowManager> m_windowManager;

@@ -1,12 +1,14 @@
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// WindowManager.cpp: Implementation of the WindowManager class.
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+// =-=-=-=-=-=-=-=-=-=-=
+// WindowManager.cpp
+// =-=-=-=-=-=-=-=-=-=-=
+
 #include "WindowManager.h"
 #include "ControllerCore.h"
 #include "WindowHelper.h"
 #include "EventBus.h"
 #include "GraphicsContext.h"
 #include "UIManager.h"
+#include "RendererManager.h"
 
 namespace Spectrum {
 
@@ -26,10 +28,10 @@ namespace Spectrum {
 
         bus->Subscribe(InputAction::Exit, [this]() {
             // In overlay mode ESC reverts to main window
-            // In main window it closes application
             if (this->IsOverlayMode()) {
                 this->ToggleOverlay();
             }
+            // In main window it closes application
             else if (m_controller) {
                 m_controller->OnClose();
             }
@@ -39,24 +41,19 @@ namespace Spectrum {
     WindowManager::~WindowManager() = default;
 
     bool WindowManager::Initialize() {
-        if (!InitializeMainWindow()) {
-            return false;
-        }
-        if (!InitializeOverlayWindow()) {
-            return false;
-        }
-        if (!RecreateGraphicsAndNotify(m_mainWnd->GetHwnd())) {
-            return false;
-        }
-        if (m_uiManager && !m_uiManager->Initialize(*m_graphics)) {
-            return false;
-        }
+        if (!InitializeMainWindow()) return false;
+        if (!InitializeOverlayWindow()) return false;
+        if (!RecreateGraphicsAndNotify(m_mainWnd->GetHwnd())) return false;
+        if (m_uiManager && !m_uiManager->Initialize(*m_graphics)) return false;
 
         WindowUtils::CenterOnScreen(m_mainWnd->GetHwnd());
         m_mainWnd->Show();
         return true;
     }
 
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // Initialization
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     bool WindowManager::InitializeMainWindow() {
         m_mainWnd = std::make_unique<MainWindow>(m_hInstance);
         return m_mainWnd->Initialize(
@@ -73,6 +70,9 @@ namespace Spectrum {
         );
     }
 
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // Main Loop & State
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     void WindowManager::ProcessMessages() {
         if (m_mainWnd && m_mainWnd->IsRunning()) {
             m_mainWnd->ProcessMessages();
@@ -83,6 +83,7 @@ namespace Spectrum {
         return m_mainWnd && m_mainWnd->IsRunning();
     }
 
+    // Checks if the active window is visible and not minimized
     bool WindowManager::IsActive() const {
         if (!IsRunning()) return false;
         HWND hwnd = GetCurrentHwnd();
@@ -95,25 +96,30 @@ namespace Spectrum {
             : (m_mainWnd ? m_mainWnd->GetHwnd() : nullptr);
     }
 
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // Graphics & Overlay Management
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     bool WindowManager::RecreateGraphicsAndNotify(HWND hwnd) {
         if (!hwnd) return false;
 
         m_graphics.reset();
         m_graphics = std::make_unique<GraphicsContext>(hwnd);
-        if (!m_graphics->Initialize()) {
-            return false;
-        }
+        if (!m_graphics->Initialize()) return false;
 
         if (m_uiManager) {
             m_uiManager->RecreateResources(*m_graphics);
         }
 
-        RECT rc;
-        GetClientRect(hwnd, &rc);
-        m_controller->OnResize(rc.right - rc.left, rc.bottom - rc.top);
+        if (m_controller) {
+            RECT rc;
+            GetClientRect(hwnd, &rc);
+            m_controller->OnResize(rc.right - rc.left, rc.bottom - rc.top);
+        }
         return true;
     }
 
+    // Hides one window and shows the other
+    // Also notifies the renderer to adjust its settings
     void WindowManager::ToggleOverlay() {
         m_isOverlay = !m_isOverlay;
 
@@ -123,11 +129,20 @@ namespace Spectrum {
         else {
             DeactivateOverlayMode();
         }
+
+        // Notify current renderer about the mode change
+        if (m_controller) {
+            if (auto* rendererManager = m_controller->GetRendererManager()) {
+                if (auto* renderer = rendererManager->GetCurrentRenderer()) {
+                    renderer->SetOverlayMode(m_isOverlay);
+                }
+            }
+        }
     }
 
+    // Shows the transparent overlay window and hides the main one
     void WindowManager::ActivateOverlayMode() {
         m_mainWnd->Hide();
-
         if (m_uiManager && m_uiManager->GetColorPicker()) {
             m_uiManager->GetColorPicker()->SetVisible(false);
         }
@@ -136,12 +151,14 @@ namespace Spectrum {
         int screenW, screenH;
         WindowUtils::GetScreenSize(screenW, screenH);
         int overlayH = m_overlayWnd->GetHeight();
-        int yPos = screenH - overlayH;
-        SetWindowPos(newHwnd, HWND_TOPMOST, 0, yPos, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
+
+        // Position overlay at the bottom of the screen
+        SetWindowPos(newHwnd, HWND_TOPMOST, 0, screenH - overlayH, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
 
         RecreateGraphicsAndNotify(newHwnd);
     }
 
+    // Shows the main window and hides the overlay
     void WindowManager::DeactivateOverlayMode() {
         m_overlayWnd->Hide();
         m_mainWnd->Show();
@@ -151,7 +168,7 @@ namespace Spectrum {
         }
 
         HWND newHwnd = m_mainWnd->GetHwnd();
-        SetForegroundWindow(m_mainWnd->GetHwnd());
+        SetForegroundWindow(newHwnd);
 
         RecreateGraphicsAndNotify(newHwnd);
     }

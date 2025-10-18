@@ -9,6 +9,9 @@
 #include "FireRenderer.h"
 #include "LedPanelRenderer.h"
 #include "GaugeRenderer.h"
+#include "KenwoodBarsRenderer.h"
+
+
 #include "Utils.h"
 #include "EventBus.h"
 #include "WindowManager.h"
@@ -39,6 +42,7 @@ namespace Spectrum {
         m_renderers[RenderStyle::Fire] = std::make_unique<FireRenderer>();
         m_renderers[RenderStyle::LedPanel] = std::make_unique<LedPanelRenderer>();
         m_renderers[RenderStyle::Gauge] = std::make_unique<GaugeRenderer>();
+        m_renderers[RenderStyle::KenwoodBars] = std::make_unique<KenwoodBarsRenderer>();
 
         m_currentStyle = RenderStyle::Bars;
         m_currentRenderer = m_renderers[m_currentStyle].get();

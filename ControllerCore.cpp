@@ -1,6 +1,7 @@
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// ControllerCore.cpp: Implementation of the main application controller.
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+// =-=-=-=-=-=-=-=-=-=-=
+// ControllerCore.cpp
+// =-=-=-=-=-=-=-=-=-=-=
+
 #include "ControllerCore.h"
 #include "WindowManager.h"
 #include "AudioManager.h"
@@ -27,6 +28,14 @@ namespace Spectrum {
         return true;
     }
 
+    void ControllerCore::Run() {
+        m_timer.Reset();
+        MainLoop();
+    }
+
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // Initialization
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     bool ControllerCore::InitializeManagers() {
         m_eventBus = std::make_unique<EventBus>();
 
@@ -47,6 +56,7 @@ namespace Spectrum {
             return false;
         }
 
+        // Set initial renderer
         m_rendererManager->SetCurrentRenderer(
             m_rendererManager->GetCurrentStyle(), m_windowManager->GetGraphics()
         );
@@ -72,15 +82,14 @@ namespace Spectrum {
         LOG_INFO("========================================");
     }
 
-    void ControllerCore::Run() {
-        m_timer.Reset();
-        MainLoop();
-    }
-
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // Main Application Loop
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     void ControllerCore::MainLoop() {
         while (m_windowManager->IsRunning()) {
             m_windowManager->ProcessMessages();
 
+            // Run loop at a fixed framerate
             float dt = m_timer.GetElapsedSeconds();
             if (dt >= FRAME_TIME) {
                 m_timer.Reset();
@@ -89,6 +98,7 @@ namespace Spectrum {
                 Render();
             }
             else {
+                // Yield thread to avoid busy-waiting
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
         }
@@ -97,6 +107,7 @@ namespace Spectrum {
     void ControllerCore::ProcessInput() {
         m_inputManager->Update();
         m_actions = m_inputManager->GetActions();
+        // Publish all queued actions to the event bus
         for (const auto& action : m_actions) {
             m_eventBus->Publish(action);
         }
@@ -112,6 +123,8 @@ namespace Spectrum {
             return;
         }
 
+        // D2D can tell us if the window is occluded
+        // No need to render if not visible
         if (auto* rt = graphics->GetRenderTarget()) {
             if (rt->CheckWindowState() & D2D1_WINDOW_STATE_OCCLUDED) {
                 return;
@@ -120,6 +133,7 @@ namespace Spectrum {
 
         graphics->BeginDraw();
 
+        // Overlay mode requires a transparent background for composition
         const Color clearColor = m_windowManager->IsOverlayMode()
             ? Color::Transparent()
             : Color::FromRGB(13, 13, 26);
@@ -131,6 +145,7 @@ namespace Spectrum {
             m_rendererManager->GetCurrentRenderer()->Render(*graphics, spectrum);
         }
 
+        // UI is not visible in overlay mode
         if (auto* uiManager = m_windowManager->GetUIManager()) {
             if (!m_windowManager->IsOverlayMode()) {
                 uiManager->Draw(*graphics);
@@ -138,6 +153,8 @@ namespace Spectrum {
         }
 
         HRESULT hr = graphics->EndDraw();
+        // D2DERR_RECREATE_TARGET means the GPU device was lost
+        // We must recreate all D2D resources
         if (hr == D2DERR_RECREATE_TARGET) {
             HWND hwnd = m_windowManager->GetCurrentHwnd();
             if (hwnd) {
@@ -146,6 +163,9 @@ namespace Spectrum {
         }
     }
 
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // Callbacks & Event Handlers
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     void ControllerCore::OnResize(int width, int height) {
         if (m_windowManager) {
             auto* graphics = m_windowManager->GetGraphics();
@@ -167,14 +187,16 @@ namespace Spectrum {
     void ControllerCore::OnClose() {
         if (m_windowManager && m_windowManager->IsRunning()) {
             if (auto* wnd = m_windowManager->GetMainWindow()) {
+                // Triggers WM_CLOSE -> WM_DESTROY -> PostQuitMessage
                 wnd->SetRunning(false);
             }
         }
     }
 
-    LRESULT ControllerCore::HandleWindowMessage(
-        HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
-    ) {
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    // Win32 Message Handling
+    // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+    LRESULT ControllerCore::HandleWindowMessage(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam) {
         switch (msg) {
         case WM_CLOSE:
             OnClose();
@@ -194,12 +216,13 @@ namespace Spectrum {
         case WM_LBUTTONDOWN:
             return HandleMouseMessage(msg, lParam);
         case WM_NCHITTEST:
-            // Allow dragging window in overlay mode
+            // Allows dragging the frameless overlay window
             if (m_windowManager->IsOverlayMode()) {
                 return HTCAPTION;
             }
             break;
         case WM_ERASEBKGND:
+            // Prevents flickering by telling Windows we handle all drawing
             return 1;
         }
         return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -214,6 +237,7 @@ namespace Spectrum {
             needsRedraw = uiManager->HandleMouseMessage(msg, x, y);
         }
 
+        // If UI interaction changed something visual, request a new frame
         if (needsRedraw) {
             HWND hwnd = m_windowManager->GetCurrentHwnd();
             if (hwnd) {

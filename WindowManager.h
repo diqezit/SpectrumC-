@@ -1,6 +1,7 @@
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// WindowManager.h: Manages main and overlay windows.
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+// =-=-=-=-=-=-=-=-=-=-=
+// WindowManager.h
+// =-=-=-=-=-=-=-=-=-=-=
+
 #ifndef SPECTRUM_CPP_WINDOW_MANAGER_H
 #define SPECTRUM_CPP_WINDOW_MANAGER_H
 
@@ -22,8 +23,12 @@ namespace Spectrum {
         bool Initialize();
         void ProcessMessages();
 
+        // Handles switching between main window and overlay
         void ToggleOverlay();
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // State & Getters
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         bool IsRunning() const;
         bool IsOverlayMode() const { return m_isOverlay; }
         bool IsActive() const;
@@ -34,15 +39,25 @@ namespace Spectrum {
         ControllerCore* GetController() const { return m_controller; }
         MainWindow* GetMainWindow() const { return m_mainWnd.get(); }
 
+        // Recreates D2D resources on window change or device loss
         bool RecreateGraphicsAndNotify(HWND hwnd);
 
     private:
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Initialization
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         bool InitializeMainWindow();
         bool InitializeOverlayWindow();
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Overlay Management
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         void ActivateOverlayMode();
         void DeactivateOverlayMode();
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Member State
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         HINSTANCE m_hInstance;
         ControllerCore* m_controller;
         bool m_isOverlay;

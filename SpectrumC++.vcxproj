@@ -47,6 +47,7 @@
     <ClInclude Include="IAudioSource.h" />
     <ClInclude Include="InputManager.h" />
     <ClInclude Include="IRenderer.h" />
+    <ClInclude Include="KenwoodBarsRenderer.h" />
     <ClInclude Include="LedPanelRenderer.h" />
     <ClInclude Include="RealtimeAudioSource.h" />
     <ClInclude Include="RendererManager.h" />
@@ -82,6 +83,7 @@
     <ClCompile Include="GaugeRenderer.cpp" />
     <ClCompile Include="GraphicsContext.cpp" />
     <ClCompile Include="InputManager.cpp" />
+    <ClCompile Include="KenwoodBarsRenderer.cpp" />
     <ClCompile Include="LedPanelRenderer.cpp" />
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="RealtimeAudioSource.cpp" />

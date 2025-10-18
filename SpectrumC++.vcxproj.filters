@@ -132,6 +132,9 @@
     <ClCompile Include="GaugeRenderer.cpp">
       <Filter>Graphics\Renderers</Filter>
     </ClCompile>
+    <ClCompile Include="KenwoodBarsRenderer.cpp">
+      <Filter>Graphics\Renderers</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ControllerCore.h">
@@ -234,6 +237,9 @@
       <Filter>Graphics\Service</Filter>
     </ClInclude>
     <ClInclude Include="GaugeRenderer.h">
+      <Filter>Graphics\Renderers</Filter>
+    </ClInclude>
+    <ClInclude Include="KenwoodBarsRenderer.h">
       <Filter>Graphics\Renderers</Filter>
     </ClInclude>
   </ItemGroup>

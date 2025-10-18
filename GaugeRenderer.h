@@ -1,6 +1,7 @@
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-// GaugeRenderer.h: Renders the spectrum as a classic analog VU meter.
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+// =-=-=-=-=-=-=-=-=-=-=
+// GaugeRenderer.h
+// =-=-=-=-=-=-=-=-=-=-=
+
 #ifndef SPECTRUM_CPP_GAUGE_RENDERER_H
 #define SPECTRUM_CPP_GAUGE_RENDERER_H
 
@@ -13,27 +14,61 @@ namespace Spectrum {
         GaugeRenderer();
         ~GaugeRenderer() override = default;
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // IRenderer Implementation
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         RenderStyle GetStyle() const override { return RenderStyle::Gauge; }
         std::string_view GetName() const override { return "Gauge"; }
         bool SupportsPrimaryColor() const override { return false; }
 
     protected:
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // BaseRenderer Overrides
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         void UpdateSettings() override;
-        void UpdateAnimation(const SpectrumData& spectrum, float deltaTime) override;
-        void DoRender(GraphicsContext& context, const SpectrumData& spectrum) override;
+
+        void UpdateAnimation(
+            const SpectrumData& spectrum,
+            float deltaTime
+        ) override;
+
+        void DoRender(
+            GraphicsContext& context,
+            const SpectrumData& spectrum
+        ) override;
 
     private:
-        struct Settings {
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Settings
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        struct QualitySettings {
             bool useGlow;
             bool useGradients;
             bool useHighlights;
             float smoothingFactorIncrease;
             float smoothingFactorDecrease;
+            float riseSpeed;
         };
 
-        void DrawGaugeBackground(GraphicsContext& context, const Rect& rect);
-        void DrawVuText(GraphicsContext& context, const Rect& backgroundRect);
-        void DrawScale(GraphicsContext& context, const Rect& rect);
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Drawing Helpers
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        void DrawGaugeBackground(
+            GraphicsContext& context,
+            const Rect& rect
+        );
+
+        void DrawVuText(
+            GraphicsContext& context,
+            const Rect& backgroundRect,
+            float fullHeight
+        );
+
+        void DrawScale(
+            GraphicsContext& context,
+            const Rect& rect
+        );
+
         void DrawMark(
             GraphicsContext& context,
             const Point& center,
@@ -41,6 +76,7 @@ namespace Spectrum {
             float value,
             const wchar_t* label
         );
+
         void DrawTickLabel(
             GraphicsContext& context,
             const Point& center,
@@ -49,19 +85,41 @@ namespace Spectrum {
             const std::wstring& label,
             float angle
         );
-        void DrawNeedle(GraphicsContext& context, const Rect& rect);
+
+        void DrawNeedle(
+            GraphicsContext& context,
+            const Rect& rect
+        );
+
+        void DrawNeedleShape(
+            GraphicsContext& context,
+            const Point& center,
+            float angle,
+            float needleLength
+        );
+
         void DrawNeedleCenter(
             GraphicsContext& context,
             const Point& center,
             float radius
         );
-        void DrawPeakLamp(GraphicsContext& context, const Rect& rect);
 
+        void DrawPeakLamp(
+            GraphicsContext& context,
+            const Rect& rect
+        );
+
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Calculation Helpers
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        float CalculateLoudness(const SpectrumData& spectrum) const;
         float DbToAngle(float db) const;
         float GetTickLength(float value, bool isMajor) const;
-        float CalculateLoudness(const SpectrumData& spectrum) const;
 
-        Settings m_settings;
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Member State
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        QualitySettings m_currentSettings;
         float m_currentDbValue;
         float m_currentNeedleAngle;
         int m_peakHoldCounter;

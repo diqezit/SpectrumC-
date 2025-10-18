@@ -1,6 +1,7 @@
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-// BaseRenderer.h: Base class for renderers providing common functionality.
-// =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
+// =-=-=-=-=-=-=-=-=-=-=
+// BaseRenderer.h
+// =-=-=-=-=-=-=-=-=-=-=
+
 #ifndef SPECTRUM_CPP_BASE_RENDERER_H
 #define SPECTRUM_CPP_BASE_RENDERER_H
 
@@ -14,27 +15,56 @@ namespace Spectrum {
         BaseRenderer();
         ~BaseRenderer() override = default;
 
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // IRenderer Implementation
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         void SetQuality(RenderQuality quality) override;
         void SetPrimaryColor(const Color& color) override;
-        void SetBackgroundColor(const Color& color) override;
+        void SetOverlayMode(bool isOverlay) override;
         void OnActivate(int width, int height) override;
-
-        void Render(GraphicsContext& context, const SpectrumData& spectrum) override;
+        void Render(
+            GraphicsContext& context,
+            const SpectrumData& spectrum
+        ) override;
 
     protected:
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Virtual Methods for Child Classes
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         virtual void UpdateSettings() {}
-        virtual void UpdateAnimation(const SpectrumData& spectrum, float deltaTime) {}
-        virtual void DoRender(GraphicsContext& context, const SpectrumData& spectrum) = 0;
 
-        // Common state remains
+        virtual void UpdateAnimation(
+            const SpectrumData& spectrum,
+            float deltaTime
+        ) {
+        }
+
+        virtual void DoRender(
+            GraphicsContext& context,
+            const SpectrumData& spectrum
+        ) = 0;
+
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Helper Methods for Child Classes
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        bool IsRenderable(const SpectrumData& spectrum) const noexcept;
+
+        // Calculates a centered rectangle with a fixed aspect ratio
+        Rect CalculatePaddedRect() const;
+
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
+        // Member State
+        // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
         RenderQuality m_quality;
         Color m_primaryColor;
-        Color m_backgroundColor;
+        bool m_isOverlay;
         int m_width;
         int m_height;
         float m_time;
 
-        bool IsRenderable(const SpectrumData& spectrum) const noexcept;
+        // Configuration for aspect-ratio aware renderers
+        float m_aspectRatio;
+        float m_padding;
 
     private:
         void UpdateTime(float deltaTime);
