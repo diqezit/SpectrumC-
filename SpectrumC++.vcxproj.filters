@@ -34,6 +34,12 @@
     <Filter Include="Audio\Sources">
       <UniqueIdentifier>{e7a61504-8bf0-4738-9e2c-47fd96855602}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Graphics\Core">
+      <UniqueIdentifier>{bc39d05e-b8ed-421c-a5cb-ab6e291d5eb0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Graphics\Service">
+      <UniqueIdentifier>{1239c239-129f-41f9-9f62-3fa5d99a3306}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Application.cpp">
@@ -72,9 +78,6 @@
     <ClCompile Include="BarsRenderer.cpp">
       <Filter>Graphics\Renderers</Filter>
     </ClCompile>
-    <ClCompile Include="BaseRenderer.cpp">
-      <Filter>Graphics\Renderers</Filter>
-    </ClCompile>
     <ClCompile Include="CircularWaveRenderer.cpp">
       <Filter>Graphics\Renderers</Filter>
     </ClCompile>
@@ -89,9 +92,6 @@
     </ClCompile>
     <ClCompile Include="WaveRenderer.cpp">
       <Filter>Graphics\Renderers</Filter>
-    </ClCompile>
-    <ClCompile Include="GraphicsContext.cpp">
-      <Filter>Graphics</Filter>
     </ClCompile>
     <ClCompile Include="RendererManager.cpp">
       <Filter>Graphics</Filter>
@@ -119,6 +119,18 @@
     </ClCompile>
     <ClCompile Include="AnimatedAudioSource.cpp">
       <Filter>Audio\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="BaseRenderer.cpp">
+      <Filter>Graphics\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="RenderUtils.cpp">
+      <Filter>Graphics\Core</Filter>
+    </ClCompile>
+    <ClCompile Include="GraphicsContext.cpp">
+      <Filter>Graphics\Service</Filter>
+    </ClCompile>
+    <ClCompile Include="GaugeRenderer.cpp">
+      <Filter>Graphics\Renderers</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -164,9 +176,6 @@
     <ClInclude Include="BarsRenderer.h">
       <Filter>Graphics\Renderers</Filter>
     </ClInclude>
-    <ClInclude Include="BaseRenderer.h">
-      <Filter>Graphics\Renderers</Filter>
-    </ClInclude>
     <ClInclude Include="CircularWaveRenderer.h">
       <Filter>Graphics\Renderers</Filter>
     </ClInclude>
@@ -181,9 +190,6 @@
     </ClInclude>
     <ClInclude Include="WaveRenderer.h">
       <Filter>Graphics\Renderers</Filter>
-    </ClInclude>
-    <ClInclude Include="GraphicsContext.h">
-      <Filter>Graphics</Filter>
     </ClInclude>
     <ClInclude Include="IRenderer.h">
       <Filter>Graphics</Filter>
@@ -217,6 +223,18 @@
     </ClInclude>
     <ClInclude Include="AnimatedAudioSource.h">
       <Filter>Audio\Sources</Filter>
+    </ClInclude>
+    <ClInclude Include="BaseRenderer.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="RenderUtils.h">
+      <Filter>Graphics\Core</Filter>
+    </ClInclude>
+    <ClInclude Include="GraphicsContext.h">
+      <Filter>Graphics\Service</Filter>
+    </ClInclude>
+    <ClInclude Include="GaugeRenderer.h">
+      <Filter>Graphics\Renderers</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

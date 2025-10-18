@@ -8,6 +8,7 @@
 #include "CubesRenderer.h"
 #include "FireRenderer.h"
 #include "LedPanelRenderer.h"
+#include "GaugeRenderer.h"
 #include "Utils.h"
 #include "EventBus.h"
 #include "WindowManager.h"
@@ -33,12 +34,11 @@ namespace Spectrum {
     bool RendererManager::Initialize() {
         m_renderers[RenderStyle::Bars] = std::make_unique<BarsRenderer>();
         m_renderers[RenderStyle::Wave] = std::make_unique<WaveRenderer>();
-        m_renderers[RenderStyle::CircularWave] =
-            std::make_unique<CircularWaveRenderer>();
+        m_renderers[RenderStyle::CircularWave] = std::make_unique<CircularWaveRenderer>();
         m_renderers[RenderStyle::Cubes] = std::make_unique<CubesRenderer>();
         m_renderers[RenderStyle::Fire] = std::make_unique<FireRenderer>();
-        m_renderers[RenderStyle::LedPanel] =
-            std::make_unique<LedPanelRenderer>();
+        m_renderers[RenderStyle::LedPanel] = std::make_unique<LedPanelRenderer>();
+        m_renderers[RenderStyle::Gauge] = std::make_unique<GaugeRenderer>();
 
         m_currentStyle = RenderStyle::Bars;
         m_currentRenderer = m_renderers[m_currentStyle].get();

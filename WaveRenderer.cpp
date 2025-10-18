@@ -1,9 +1,9 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // WaveRenderer.cpp: Implementation of the WaveRenderer class.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
 #include "WaveRenderer.h"
 #include "Utils.h"
+#include "RenderUtils.h"
 
 namespace Spectrum {
 
@@ -29,9 +29,17 @@ namespace Spectrum {
         }
     }
 
-    void WaveRenderer::DoRender(GraphicsContext& context,
-        const SpectrumData& spectrum) {
-        BuildPolylineFromSpectrum(spectrum, 0.5f, 0.4f, m_points);
+    void WaveRenderer::DoRender(
+        GraphicsContext& context,
+        const SpectrumData& spectrum
+    ) {
+        RenderUtils::BuildPolylineFromSpectrum(
+            spectrum,
+            m_height * 0.5f,
+            m_height * 0.4f,
+            m_width,
+            m_points
+        );
         context.DrawPolyline(m_points, m_primaryColor, m_settings.lineWidth);
 
         if (!m_settings.useReflection) return;
@@ -43,8 +51,7 @@ namespace Spectrum {
 
         Color rc = m_primaryColor;
         rc.a *= m_settings.reflectionStrength;
-
         context.DrawPolyline(refl, rc, m_settings.lineWidth * 0.8f);
     }
 
-} // namespace Spectrum
+}

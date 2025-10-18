@@ -1,7 +1,6 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // LedPanelRenderer.cpp: Implementation of the LedPanelRenderer class.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
 #include "LedPanelRenderer.h"
 #include "Utils.h"
 
@@ -38,19 +37,28 @@ namespace Spectrum {
     }
 
     void LedPanelRenderer::UpdateGrid(size_t barCount) {
-        const auto gm = ComputeCenteredGrid(
-            static_cast<int>(barCount),
-            m_settings.rows
+        if (barCount <= 0 || m_width <= 0 || m_height <= 0) {
+            m_grid = {};
+            return;
+        }
+
+        m_grid.cols = static_cast<int>(barCount);
+        m_grid.rows = m_settings.rows;
+        m_grid.cellSize = std::min(
+            static_cast<float>(m_width) / m_grid.cols,
+            static_cast<float>(m_height) / m_grid.rows
         );
-        m_grid.cols = gm.cols;
-        m_grid.rows = gm.rows;
-        m_grid.cellSize = gm.cellSize;
-        m_grid.startX = gm.startX;
-        m_grid.startY = gm.startY;
+
+        const float gridW = m_grid.cols * m_grid.cellSize;
+        const float gridH = m_grid.rows * m_grid.cellSize;
+        m_grid.startX = (m_width - gridW) * 0.5f;
+        m_grid.startY = (m_height - gridH) * 0.5f;
     }
 
-    void LedPanelRenderer::UpdateAnimation(const SpectrumData& spectrum,
-        float deltaTime) {
+    void LedPanelRenderer::UpdateAnimation(
+        const SpectrumData& spectrum,
+        float deltaTime
+    ) {
         if (m_currentValues.size() != spectrum.size()) {
             m_currentValues.assign(spectrum.size(), 0.0f);
             m_peakValues.assign(spectrum.size(), 0.0f);
@@ -60,12 +68,8 @@ namespace Spectrum {
         const float peakDecay = 0.95f;
 
         for (size_t i = 0; i < spectrum.size(); ++i) {
-            // Smooth attack/decay
-            m_currentValues[i] = Utils::Lerp(
-                m_currentValues[i], spectrum[i], 0.3f
-            );
+            m_currentValues[i] = Utils::Lerp(m_currentValues[i], spectrum[i], 0.3f);
 
-            // Peak hold
             if (m_settings.usePeakHold) {
                 if (m_currentValues[i] >= m_peakValues[i]) {
                     m_peakValues[i] = m_currentValues[i];
@@ -86,9 +90,11 @@ namespace Spectrum {
         }
     }
 
-    Color LedPanelRenderer::GetLedColor(int row,
+    Color LedPanelRenderer::GetLedColor(
+        int row,
         int totalRows,
-        float brightness) const {
+        float brightness
+    ) const {
         const float ratio = static_cast<float>(row) / totalRows;
         Color c;
 
@@ -104,8 +110,10 @@ namespace Spectrum {
         return Utils::AdjustBrightness(c, brightness);
     }
 
-    void LedPanelRenderer::DoRender(GraphicsContext& context,
-        const SpectrumData& spectrum) {
+    void LedPanelRenderer::DoRender(
+        GraphicsContext& context,
+        const SpectrumData& spectrum
+    ) {
         UpdateGrid(spectrum.size());
         if (m_grid.rows == 0 || m_grid.cols == 0) return;
 
@@ -115,29 +123,23 @@ namespace Spectrum {
         for (int y = 0; y < m_grid.rows; ++y) {
             for (int x = 0; x < m_grid.cols; ++x) {
                 const Point center = {
-                    m_grid.startX + x * m_grid.cellSize +
-                    m_grid.cellSize * 0.5f,
-                    m_grid.startY + y * m_grid.cellSize +
-                    m_grid.cellSize * 0.5f
+                    m_grid.startX + x * m_grid.cellSize + m_grid.cellSize * 0.5f,
+                    m_grid.startY + y * m_grid.cellSize + m_grid.cellSize * 0.5f
                 };
 
                 const int currentRow = m_grid.rows - 1 - y;
                 const int litLeds = static_cast<int>(
-                    Utils::Clamp(m_currentValues[x], 0.0f, 1.0f) *
-                    m_grid.rows
+                    Utils::Clamp(m_currentValues[x], 0.0f, 1.0f) * m_grid.rows
                     );
                 const int peakLed = static_cast<int>(
-                    Utils::Clamp(m_peakValues[x], 0.0f, 1.0f) *
-                    m_grid.rows
+                    Utils::Clamp(m_peakValues[x], 0.0f, 1.0f) * m_grid.rows
                     );
 
                 Color ledColor = offColor;
                 if (currentRow < litLeds) {
                     ledColor = GetLedColor(currentRow, m_grid.rows, 1.0f);
                 }
-                else if (m_settings.usePeakHold &&
-                    currentRow == peakLed &&
-                    m_peakTimers[x] > 0.0f) {
+                else if (m_settings.usePeakHold && currentRow == peakLed && m_peakTimers[x] > 0.0f) {
                     ledColor = Color::White();
                     ledColor.a = 0.8f;
                 }
@@ -147,4 +149,4 @@ namespace Spectrum {
         }
     }
 
-} // namespace Spectrum
+}

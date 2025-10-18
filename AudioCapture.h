@@ -1,8 +1,6 @@
-// AudioCapture.h
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-// AudioCapture.h: Captures audio from the default playback device (loopback).
+// AudioCapture.h: Captures a single audio session and reports its status.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 #ifndef SPECTRUM_CPP_AUDIO_CAPTURE_H
 #define SPECTRUM_CPP_AUDIO_CAPTURE_H
 
@@ -18,12 +16,14 @@ namespace Spectrum {
     public:
         virtual ~IAudioCaptureCallback() = default;
         virtual void OnAudioData(
-            const float* data, size_t samples, int channels
+            const float* data,
+            size_t samples,
+            int channels
         ) = 0;
     };
 
     // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-    // Main audio capture class, providing a simple public API.
+    // Manages a single audio capture session.
     // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     class AudioCapture {
     public:
@@ -35,19 +35,17 @@ namespace Spectrum {
         AudioCapture(AudioCapture&&) = delete;
         AudioCapture& operator=(AudioCapture&&) = delete;
 
-        // Lifecycle management
         bool Initialize();
         bool Start();
         void Stop() noexcept;
 
-        // State getters
         bool IsCapturing() const noexcept;
         bool IsInitialized() const noexcept;
+        bool IsFaulted() const noexcept;
+        HRESULT GetLastError() const noexcept;
 
-        // Configuration
         void SetCallback(IAudioCaptureCallback* callback) noexcept;
 
-        // Audio format info
         int GetSampleRate() const noexcept;
         int GetChannels() const noexcept;
         int GetBitsPerSample() const noexcept;
@@ -57,6 +55,6 @@ namespace Spectrum {
         std::unique_ptr<Implementation> m_pimpl;
     };
 
-} // namespace Spectrum
+}
 
-#endif // SPECTRUM_CPP_AUDIO_CAPTURE_H
+#endif

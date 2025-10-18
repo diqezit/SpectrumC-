@@ -86,7 +86,7 @@ namespace Spectrum {
     // Enumerations
     // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
     enum class RenderStyle : uint8_t {
-        Bars = 0, Wave, CircularWave, Cubes, Fire, LedPanel, Count
+        Bars = 0, Wave, CircularWave, Cubes, Fire, LedPanel, Gauge, Count
     };
 
     enum class RenderQuality : uint8_t {

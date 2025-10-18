@@ -1,8 +1,6 @@
-// AudioCaptureEngine.h
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
 // AudioCaptureEngine.h: Internal helper classes for the audio capture process.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-
-
 #ifndef SPECTRUM_CPP_AUDIO_CAPTURE_ENGINE_H
 #define SPECTRUM_CPP_AUDIO_CAPTURE_ENGINE_H
 
@@ -36,7 +34,8 @@ namespace Spectrum {
             bool InitializeDevice(wrl::ComPtr<IMMDevice>& device) const;
 
             bool InitializeClient(
-                wrl::ComPtr<IMMDevice>& device, WasapiInitData& data
+                wrl::ComPtr<IMMDevice>& device,
+                WasapiInitData& data
             ) const;
 
             bool TryInitializeMode(
@@ -48,11 +47,13 @@ namespace Spectrum {
             ) const;
 
             void ResetClient(
-                wrl::ComPtr<IMMDevice>& device, wrl::ComPtr<IAudioClient>& client
+                wrl::ComPtr<IMMDevice>& device,
+                wrl::ComPtr<IAudioClient>& client
             ) const;
 
             bool SetupCaptureClient(
-                IAudioClient* audioClient, IAudioCaptureClient** captureClient
+                IAudioClient* audioClient,
+                IAudioCaptureClient** captureClient
             ) const;
         };
 
@@ -63,7 +64,7 @@ namespace Spectrum {
         public:
             AudioPacketProcessor(IAudioCaptureClient* client, int channels);
             void SetCallback(IAudioCaptureCallback* callback) noexcept;
-            bool ProcessAvailablePackets();
+            HRESULT ProcessAvailablePackets();
 
         private:
             IAudioCaptureClient* m_captureClient;
@@ -78,7 +79,7 @@ namespace Spectrum {
         class ICaptureEngine {
         public:
             virtual ~ICaptureEngine() = default;
-            virtual void Run(
+            virtual HRESULT Run(
                 const std::atomic<bool>& stopRequested,
                 AudioPacketProcessor& processor
             ) = 0;
@@ -87,7 +88,7 @@ namespace Spectrum {
         class EventDrivenEngine : public ICaptureEngine {
         public:
             explicit EventDrivenEngine(HANDLE event);
-            void Run(
+            HRESULT Run(
                 const std::atomic<bool>& stopRequested,
                 AudioPacketProcessor& processor
             ) override;
@@ -97,13 +98,13 @@ namespace Spectrum {
 
         class PollingEngine : public ICaptureEngine {
         public:
-            void Run(
+            HRESULT Run(
                 const std::atomic<bool>& stopRequested,
                 AudioPacketProcessor& processor
             ) override;
         };
 
-    } // namespace Internal
-} // namespace Spectrum
+    }
+}
 
-#endif // SPECTRUM_CPP_AUDIO_CAPTURE_ENGINE_H
+#endif

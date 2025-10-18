@@ -42,6 +42,7 @@
     <ClInclude Include="FFTProcessor.h" />
     <ClInclude Include="FireRenderer.h" />
     <ClInclude Include="FrequencyMapper.h" />
+    <ClInclude Include="GaugeRenderer.h" />
     <ClInclude Include="GraphicsContext.h" />
     <ClInclude Include="IAudioSource.h" />
     <ClInclude Include="InputManager.h" />
@@ -49,6 +50,7 @@
     <ClInclude Include="LedPanelRenderer.h" />
     <ClInclude Include="RealtimeAudioSource.h" />
     <ClInclude Include="RendererManager.h" />
+    <ClInclude Include="RenderUtils.h" />
     <ClInclude Include="SpectrumAnalyzer.h" />
     <ClInclude Include="SpectrumPostProcessor.h" />
     <ClInclude Include="Types.h" />
@@ -77,12 +79,14 @@
     <ClCompile Include="FFTProcessor.cpp" />
     <ClCompile Include="FireRenderer.cpp" />
     <ClCompile Include="FrequencyMapper.cpp" />
+    <ClCompile Include="GaugeRenderer.cpp" />
     <ClCompile Include="GraphicsContext.cpp" />
     <ClCompile Include="InputManager.cpp" />
     <ClCompile Include="LedPanelRenderer.cpp" />
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="RealtimeAudioSource.cpp" />
     <ClCompile Include="RendererManager.cpp" />
+    <ClCompile Include="RenderUtils.cpp" />
     <ClCompile Include="SpectrumAnalyzer.cpp" />
     <ClCompile Include="SpectrumPostProcessor.cpp" />
     <ClCompile Include="UIManager.cpp" />

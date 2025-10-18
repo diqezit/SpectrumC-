@@ -1,9 +1,9 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // BarsRenderer.cpp: Implementation of the BarsRenderer class.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
 #include "BarsRenderer.h"
 #include "Utils.h"
+#include "RenderUtils.h"
 
 namespace Spectrum {
 
@@ -29,15 +29,21 @@ namespace Spectrum {
         }
     }
 
-    void BarsRenderer::DoRender(GraphicsContext& context,
-        const SpectrumData& spectrum) {
+    void BarsRenderer::DoRender(
+        GraphicsContext& context,
+        const SpectrumData& spectrum
+    ) {
         const size_t barCount = spectrum.size();
-        const auto bl = ComputeBarLayout(barCount, m_settings.barSpacing);
+        const auto bl = RenderUtils::ComputeBarLayout(
+            barCount,
+            m_settings.barSpacing,
+            m_width
+        );
         if (bl.barWidth <= 0.0f) return;
 
         for (size_t i = 0; i < barCount; ++i) {
             const float mag = spectrum[i];
-            const float h = MagnitudeToHeight(mag, 0.9f);
+            const float h = RenderUtils::MagnitudeToHeight(mag, m_height, 0.9f);
             if (h < 1.0f) continue;
 
             const Rect rect(
@@ -50,25 +56,32 @@ namespace Spectrum {
         }
     }
 
-    void BarsRenderer::RenderBar(GraphicsContext& context,
+    void BarsRenderer::RenderBar(
+        GraphicsContext& context,
         const Rect& rect,
-        float magnitude) {
+        float magnitude
+    ) {
         Color barColor = Utils::AdjustBrightness(
-            m_primaryColor, 0.7f + 0.6f * magnitude
+            m_primaryColor,
+            0.7f + 0.6f * magnitude
         );
 
         if (m_settings.useShadow) {
-            Rect shadow(rect.x + 2.0f, rect.y + 2.0f,
-                rect.width, rect.height);
+            Rect shadow(rect.x + 2.0f, rect.y + 2.0f, rect.width, rect.height);
             context.DrawRoundedRectangle(
-                shadow, m_settings.cornerRadius,
-                Color(0, 0, 0, 0.3f), true
+                shadow,
+                m_settings.cornerRadius,
+                Color(0, 0, 0, 0.3f),
+                true
             );
         }
 
         if (m_settings.cornerRadius > 0.0f) {
             context.DrawRoundedRectangle(
-                rect, m_settings.cornerRadius, barColor, true
+                rect,
+                m_settings.cornerRadius,
+                barColor,
+                true
             );
         }
         else {
@@ -82,10 +95,8 @@ namespace Spectrum {
                 rect.width - 4.0f,
                 std::min(10.0f, rect.height * 0.2f)
             );
-            context.DrawRectangle(
-                hl, Color(1, 1, 1, 0.2f * magnitude), true
-            );
+            context.DrawRectangle(hl, Color(1, 1, 1, 0.2f * magnitude), true);
         }
     }
 
-} // namespace Spectrum
+}

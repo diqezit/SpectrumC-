@@ -1,15 +1,14 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // CircularWaveRenderer.cpp: Implementation of CircularWaveRenderer class.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
 #include "CircularWaveRenderer.h"
 #include "Utils.h"
+#include "RenderUtils.h"
 
 namespace Spectrum {
 
     CircularWaveRenderer::CircularWaveRenderer()
-        : m_angle(0.0f)
-        , m_waveTime(0.0f) {
+        : m_angle(0.0f), m_waveTime(0.0f) {
         m_primaryColor = Color::FromRGB(0, 150, 255);
         UpdateSettings();
     }
@@ -38,12 +37,13 @@ namespace Spectrum {
     }
 
     void CircularWaveRenderer::UpdateAnimation(
-        const SpectrumData& spectrum, float deltaTime) {
-        const float avg = GetAverageMagnitude(spectrum);
+        const SpectrumData& spectrum,
+        float deltaTime
+    ) {
+        const float avg = RenderUtils::GetAverageMagnitude(spectrum);
         const float rotFactor = 0.3f;
 
-        m_angle += m_settings.rotationSpeed *
-            (1.0f + avg * rotFactor) * deltaTime;
+        m_angle += m_settings.rotationSpeed * (1.0f + avg * rotFactor) * deltaTime;
         if (m_angle > TWO_PI) m_angle -= TWO_PI;
 
         m_waveTime += m_settings.waveSpeed * deltaTime;
@@ -61,8 +61,10 @@ namespace Spectrum {
         }
     }
 
-    void CircularWaveRenderer::DoRender(GraphicsContext& context,
-        const SpectrumData& spectrum) {
+    void CircularWaveRenderer::DoRender(
+        GraphicsContext& context,
+        const SpectrumData& spectrum
+    ) {
         PrecomputeCirclePoints();
 
         const Point center = { m_width * 0.5f, m_height * 0.5f };
@@ -76,23 +78,22 @@ namespace Spectrum {
         const float stepR = (maxR - r0) / std::max(1, rings);
 
         for (int i = rings - 1; i >= 0; --i) {
-            const float mag = SegmentAverage(
-                spectrum, rings, static_cast<size_t>(i)
+            const float mag = RenderUtils::SegmentAverage(
+                spectrum,
+                rings,
+                static_cast<size_t>(i)
             );
             if (mag < 0.01f) continue;
 
             const float phase = 0.1f;
             const float baseR = r0 + i * stepR;
-            const float wobble = std::sin(m_waveTime + i * phase + m_angle)
-                * mag * stepR;
+            const float wobble = std::sin(m_waveTime + i * phase + m_angle) * mag * stepR;
             const float radius = baseR + wobble;
             if (radius <= 0.0f) continue;
 
             const float distK = 1.0f - (radius / maxR);
             const float alpha = Utils::Clamp(mag * 1.5f * distK, 0.0f, 1.0f);
-            float stroke = Utils::Clamp(
-                1.5f + mag * 6.0f, 1.5f, m_settings.maxStroke
-            );
+            float stroke = Utils::Clamp(1.5f + mag * 6.0f, 1.5f, m_settings.maxStroke);
 
             Color c = m_primaryColor;
             c.a = alpha;
@@ -113,4 +114,4 @@ namespace Spectrum {
         }
     }
 
-} // namespace Spectrum
+}

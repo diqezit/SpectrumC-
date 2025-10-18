@@ -1,9 +1,9 @@
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
 // CubesRenderer.cpp: Implementation of the CubesRenderer class.
 // =-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=-=
-
 #include "CubesRenderer.h"
 #include "Utils.h"
+#include "RenderUtils.h"
 
 namespace Spectrum {
 
@@ -29,11 +29,13 @@ namespace Spectrum {
         }
     }
 
-    void CubesRenderer::DoRender(GraphicsContext& context,
-        const SpectrumData& spectrum) {
+    void CubesRenderer::DoRender(
+        GraphicsContext& context,
+        const SpectrumData& spectrum
+    ) {
         const size_t n = spectrum.size();
         const float spacing = 2.0f;
-        const auto bl = ComputeBarLayout(n, spacing);
+        const auto bl = RenderUtils::ComputeBarLayout(n, spacing, m_width);
         if (bl.barWidth <= 0.0f) return;
 
         std::vector<CubeData> cubes;
@@ -43,7 +45,7 @@ namespace Spectrum {
             const float mag = spectrum[i];
             if (mag < 0.01f) continue;
 
-            const float h = MagnitudeToHeight(mag, 0.9f);
+            const float h = RenderUtils::MagnitudeToHeight(mag, m_height, 0.9f);
             CubeData cd;
             cd.frontFace = {
                 i * bl.totalBarWidth,
@@ -63,19 +65,15 @@ namespace Spectrum {
 
             if (m_settings.useShadow) {
                 context.DrawRectangle(
-                    { cube.frontFace.x + 3, cube.frontFace.y + 3,
-                      cube.frontFace.width, cube.frontFace.height },
+                    { cube.frontFace.x + 3, cube.frontFace.y + 3, cube.frontFace.width, cube.frontFace.height },
                     { 0, 0, 0, 0.2f }
                 );
             }
 
             if (m_settings.useSideFace) {
-                Color side = Utils::AdjustBrightness(
-                    front, m_settings.sideFaceBrightness
-                );
+                Color side = Utils::AdjustBrightness(front, m_settings.sideFaceBrightness);
                 Point p1 = { cube.frontFace.GetRight(), cube.frontFace.y };
-                Point p2 = { p1.x + cube.sideWidth,
-                            p1.y - cube.topHeight };
+                Point p2 = { p1.x + cube.sideWidth, p1.y - cube.topHeight };
                 Point p3 = { p2.x, p2.y + cube.frontFace.height };
                 Point p4 = { p1.x, cube.frontFace.GetBottom() };
                 context.DrawPolygon({ p1, p2, p3, p4 }, side);
@@ -85,10 +83,8 @@ namespace Spectrum {
                 Color top = Utils::AdjustBrightness(front, 1.2f);
                 Point p1 = { cube.frontFace.x, cube.frontFace.y };
                 Point p2 = { cube.frontFace.GetRight(), cube.frontFace.y };
-                Point p3 = { p2.x + cube.sideWidth,
-                            p2.y - cube.topHeight };
-                Point p4 = { p1.x + cube.sideWidth,
-                            p1.y - cube.topHeight };
+                Point p3 = { p2.x + cube.sideWidth, p2.y - cube.topHeight };
+                Point p4 = { p1.x + cube.sideWidth, p1.y - cube.topHeight };
                 context.DrawPolygon({ p1, p2, p3, p4 }, top);
             }
 
@@ -96,4 +92,4 @@ namespace Spectrum {
         }
     }
 
-} // namespace Spectrum
+}
